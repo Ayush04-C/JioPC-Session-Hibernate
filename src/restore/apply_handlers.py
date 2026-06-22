@@ -59,3 +59,30 @@ def _match_handler(exec_path: str, handlers: list) -> dict | None:
             return handler
             
     return None
+def _build_restore_args(handler: dict, window: dict) -> list[str]:
+    try:
+        strategy = handler.get('restore_strategy')
+        
+        if strategy == 'flag':
+            flag = handler.get('restore_flag', '')
+            return [flag] if flag else []
+            
+        elif strategy == 'cwd':
+            cwd = window.get('cwd')
+            if cwd is not None:
+                return [f"--working-directory={cwd}"]
+            return []
+            
+        elif strategy == 'cmdline_arg':
+            cmdline = window.get('cmdline', [])
+            if cmdline and isinstance(cmdline, list) and len(cmdline) > 1:
+                return [cmdline[1]]
+            return []
+            
+        else:
+            logging.warning(f"Unknown restore_strategy '{strategy}'.")
+            return []
+            
+    except Exception as e:
+        logging.warning(f"Error building restore args: {e}")
+        return []
