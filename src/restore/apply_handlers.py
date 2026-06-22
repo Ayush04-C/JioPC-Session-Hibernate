@@ -73,6 +73,31 @@ def _match_handler(exec_path: str, handlers: list) -> dict | None:
             
     return None
 
+def _get_shell_cwd(terminal_pid: int | None) -> str | None:
+    """
+    Given a terminal emulator's PID, find its child shell process
+    and return that shell's current working directory.
+    """
+    if terminal_pid is None:
+        return None
+        
+    try:
+        import subprocess
+        result = subprocess.run(['pgrep', '-P', str(terminal_pid)], capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout:
+            child_pids = result.stdout.strip().split('\n')
+            for child_pid in child_pids:
+                try:
+                    cwd = os.readlink(f"/proc/{child_pid}/cwd")
+                    if cwd:
+                        return cwd
+                except Exception:
+                    continue
+    except Exception as e:
+        logging.warning(f"Error finding child shell cwd for PID {terminal_pid}: {e}")
+        
+    return None
+
 def _build_restore_args(handler: dict, window: dict) -> list[str]:
     """
     Implements the logic to extract restore arguments based on restore_strategy.
@@ -83,12 +108,28 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
         
         if strategy == 'flag':
             flag = handler.get('restore_flag', '')
-            return [flag] if flag else []
+            return flag.split() if flag else []
             
         elif strategy == 'cwd':
             cwd = window.get('cwd')
             if cwd is not None:
                 return [f"--working-directory={cwd}"]
+            return []
+            
+        elif strategy == 'shell_cwd':
+            pid = window.get('pid')
+            cwd = _get_shell_cwd(pid)
+            if cwd is None:
+                cwd = window.get('cwd')
+            if cwd is not None:
+                return [f"--working-directory={cwd}"]
+            logging.warning(f"Both shell cwd and fallback cwd were None for handler '{handler.get('name')}'.")
+            return []
+            
+        elif strategy == 'cwd_arg':
+            cwd = window.get('cwd')
+            if cwd is not None:
+                return [cwd]
             return []
             
         elif strategy == 'cmdline_arg':

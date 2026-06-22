@@ -8,9 +8,11 @@
 # Keys:
 # - name: string — unique identifier for the application handler (e.g. "chrome").
 # - match_pattern: string — regex pattern matched against the executable path.
-# - restore_strategy: string — one of: "flag", "cwd", "cmdline_arg".
+# - restore_strategy: string — one of: "flag", "cwd", "shell_cwd", "cmdline_arg", "cwd_arg".
 #     - "flag": appends restore_flag directly when relaunching.
 #     - "cwd": builds --working-directory=<cwd> using the cwd field from window data.
+#     - "shell_cwd": looks up child shell processes to extract the true working directory.
+#     - "cwd_arg": extracts cwd from window data and passes it as a positional argument.
 #     - "cmdline_arg": extracts cmdline[1] from window data and passes it as a positional argument.
 # - restore_flag: string — the flag to append (use empty string "" if not applicable).
 # - restore_supported: boolean — indicates if the app can be reliably restored.
@@ -21,20 +23,20 @@ handlers:
   - name: chrome
     match_pattern: "google-chrome|chromium"
     restore_strategy: flag
-    restore_flag: "--restore-last-session"
+    restore_flag: "--no-sandbox --disable-gpu --restore-last-session"
     restore_supported: true
     description: "Restores Chrome or Chromium using its native --restore-last-session flag"
 
   - name: lxterminal
     match_pattern: "lxterminal"
-    restore_strategy: cwd
+    restore_strategy: shell_cwd
     restore_flag: ""
     restore_supported: true
-    description: "Restores LXTerminal to its previous working directory using the cwd field"
+    description: "Restores LXTerminal to its previous working directory using the shell_cwd strategy"
 
   - name: pcmanfm-qt
     match_pattern: "pcmanfm-qt|pcmanfm"
-    restore_strategy: cmdline_arg
+    restore_strategy: cwd_arg
     restore_flag: ""
     restore_supported: true
     description: "Restores PCManFM-Qt to the previously open folder using cmdline argument or cwd"
