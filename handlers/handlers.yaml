@@ -1,36 +1,12 @@
-# =============================================================================
-# Handler Registry for JioPC Session Hibernate
-# Owner: Ayush
-#
-# Keys:
-# - name: Human-readable identifier for the application handler.
-# - match_pattern: Regex or string to match against wmctrl output or process names.
-# - restore_strategy: How to restore (e.g., 'cli_args', 'session_bus', 'desktop_file').
-# - restore_flag: The CLI flag to append if using cli_args strategy (or empty string).
-# - restore_supported: Boolean indicating if we know how to reliably restore this app.
-# =============================================================================
-
 handlers:
   - name: chrome
     match_pattern: "google-chrome|chromium"
-    restore_strategy: cli_args
+    restore_strategy: flag
     restore_flag: "--restore-last-session"
     restore_supported: true
 
-  - name: terminal
+  - name: lxterminal
     match_pattern: "lxterminal"
-    restore_strategy: cli_args
-    restore_flag: "--working-directory="
-    restore_supported: true
-
-  - name: filemanager
-    match_pattern: "pcmanfm-qt"
-    restore_strategy: cli_args
-    restore_flag: "-d"
-    restore_supported: true
-
-  - name: libreoffice
-    match_pattern: "soffice.bin|libreoffice"
-    restore_strategy: cli_args
+    restore_strategy: cwd
     restore_flag: ""
     restore_supported: true
