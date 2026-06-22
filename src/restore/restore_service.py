@@ -66,6 +66,52 @@ def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
         logging.warning(f"Error showing zenity dialog: {e}")
         return False
 
+def _restore_geometry(app_name: str, geometry: dict) -> None:
+    if not geometry or not app_name:
+        return
+        
+    try:
+        x = geometry.get("x", 0)
+        y = geometry.get("y", 0)
+        w = geometry.get("width", 800)
+        h = geometry.get("height", 600)
+        
+        geom_str = f"0,{x},{y},{w},{h}"
+        cmd = ["wmctrl", "-r", app_name, "-e", geom_str]
+        
+        time.sleep(GEOMETRY_DELAY_SECONDS)
+        subprocess.run(cmd, capture_output=True)
+    except Exception as e:
+        logging.warning(f"Geometry restore failed for '{app_name}': {e}")
+
+def _relaunch_app(window: dict) -> bool:
+    try:
+        exec_path = window.get("exec")
+        if not exec_path:
+            logging.error("No executable path found for window")
+            return False
+            
+        handler = window.get("handler")
+        restore_args = window.get("restore_args", [])
+        
+        if handler is None:
+            cmdline = window.get("cmdline", [])
+            if len(cmdline) > 1:
+                cmd = [exec_path] + cmdline[1:]
+            else:
+                cmd = [exec_path]
+        else:
+            cmd = [exec_path] + restore_args
+            
+        logging.info(f"Relaunching: {' '.join(cmd)}")
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        
+        _restore_geometry(window.get("app_name"), window.get("geometry"))
+        return True
+    except Exception as e:
+        logging.error(f"Failed to relaunch app {window.get('exec')}: {e}")
+        return False
+
 def _rename_state_file() -> None:
     try:
         if SESSION_STATE_PATH.exists():
@@ -73,17 +119,31 @@ def _rename_state_file() -> None:
     except Exception as e:
         logging.error(f"Failed to rename state file: {e}")
 
+def _write_restored_count(count: int) -> None:
+    try:
+        if not SESSION_STATE_PATH.exists():
+            return
+            
+        with open(SESSION_STATE_PATH, 'r') as f:
+            data = json.load(f)
+            
+        if "meta" not in data:
+            data["meta"] = {}
+        data["meta"]["restored_count"] = count
+        
+        with open(SESSION_STATE_PATH, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        logging.error(f"Failed to update restored_count: {e}")
+
 def main() -> None:
-    # Step 1
     logging.info("Step 1: Waiting for desktop to load...")
     time.sleep(DESKTOP_WAIT_SECONDS)
     
-    # Step 2
     if not SESSION_STATE_PATH.exists():
         logging.info("No session state found, nothing to restore")
         sys.exit(0)
         
-    # Step 3
     try:
         with open(SESSION_STATE_PATH, 'r') as f:
             state = json.load(f)
@@ -102,7 +162,6 @@ def main() -> None:
         
     windows = state.get("windows", [])
     
-    # Step 4
     if _is_stale(saved_at):
         logging.info("Session state is stale, discarding silently")
         try:
@@ -111,11 +170,36 @@ def main() -> None:
             logging.error(f"Failed to delete stale state file: {e}")
         sys.exit(0)
         
-    # Step 5
     confirmed = _show_restore_dialog(saved_at, len(windows))
     if not confirmed:
         _rename_state_file()
         sys.exit(0)
+        
+    restored_count = 0
+    unsaved_apps = []
+    
+    for window in windows:
+        try:
+            success = _relaunch_app(window)
+            if success:
+                restored_count += 1
+            if window.get("has_unsaved"):
+                app_name = window.get("app_name") or window.get("exec", "Unknown")
+                unsaved_apps.append(app_name)
+        except Exception as e:
+            logging.error(f"Critical per-app error: {e}")
+            
+    _write_restored_count(restored_count)
+    _rename_state_file()
+    logging.info(f"Restore complete: {restored_count} of {len(windows)} apps relaunched")
+    
+    if unsaved_apps:
+        try:
+            apps_str = ", ".join(unsaved_apps)
+            cmd = ["notify-send", "JioPC Restore", f"Note: some apps had unsaved work: {apps_str}"]
+            subprocess.run(cmd, capture_output=True)
+        except Exception as e:
+            logging.error(f"Failed to send unsaved apps notification: {e}")
 
 if __name__ == "__main__":
     main()
