@@ -47,6 +47,32 @@ def _is_stale(saved_at_str: str) -> bool:
         logging.warning(f"Failed to parse saved_at '{saved_at_str}': {e}")
         return False
 
+def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
+    try:
+        cmd = [
+            "zenity", "--question",
+            "--title=JioPC Session Restore",
+            f"--text=Restore your previous session?\n\nSaved: {saved_at_str}\nApps: {window_count}",
+            "--ok-label=Restore",
+            "--cancel-label=Dismiss",
+            "--width=400"
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        return result.returncode == 0
+    except FileNotFoundError:
+        logging.warning("zenity not found, proceeding without confirmation.")
+        return True
+    except Exception as e:
+        logging.warning(f"Error showing zenity dialog: {e}")
+        return False
+
+def _rename_state_file() -> None:
+    try:
+        if SESSION_STATE_PATH.exists():
+            SESSION_STATE_PATH.rename(SESSION_STATE_LAST_PATH)
+    except Exception as e:
+        logging.error(f"Failed to rename state file: {e}")
+
 def main() -> None:
     # Step 1
     logging.info("Step 1: Waiting for desktop to load...")
@@ -83,6 +109,12 @@ def main() -> None:
             SESSION_STATE_PATH.unlink()
         except Exception as e:
             logging.error(f"Failed to delete stale state file: {e}")
+        sys.exit(0)
+        
+    # Step 5
+    confirmed = _show_restore_dialog(saved_at, len(windows))
+    if not confirmed:
+        _rename_state_file()
         sys.exit(0)
 
 if __name__ == "__main__":
