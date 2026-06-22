@@ -1,15 +1,65 @@
-# Benchmark Methodology
+# JioPC Session Hibernate: Benchmark Methodology
 
-## What we measure
-- **Save time**: Time taken to capture, enrich, and write the session.
-- **Restore time**: Time taken from user confirmation to all windows being reopened.
-- **Success rate**: Percentage of correctly restored applications.
+## 1. What We Measure
 
-## How we measure it
-*Placeholder: Describe scripts/tools used for benchmarking.*
+- **Save Time**: Time elapsed from the trigger event to the moment `session-state.json` is fully synced to disk (measured in ms).
+- **Restore Time**: Time elapsed from login (restore daemon activation) until all `subprocess.Popen()` background launches have fired (measured in seconds).
+- **App Success Rate**: Percentage of applications recorded in the JSON payload that were successfully relaunched.
+- **Handler Match Rate**: Percentage of generic windows that successfully matched a defined handler string and bypassed the fallback logic.
 
-## Results table (10 test combinations)
-*Placeholder: Insert test combinations and outcomes here.*
+## 2. How We Measure It
 
-## How to reproduce
-*Placeholder: Provide exact commands to rerun the benchmarks.*
+- **Save Time**: Timestamp at the exact start of the capture hook, subtracted from the timestamp after the final JSON write. This value is serialized directly into the JSON `save_duration_ms` field.
+- **Restore Time**: Evaluated from the first line of `restore.log` to the timestamp immediately following the final `Popen()` and geometry `wmctrl` command.
+- **Success Rate**: Calculated as `restored_count / total_windows * 100`. Sourced directly from `session-state-last.json`.
+- **Tooling**: All measurements are calculated natively via Python's standard `time.time()` library. No external system-level benchmarking suites are required.
+
+## 3. Test Combinations
+
+| Test # | Apps Open | Trigger | Expected Save Time | Expected Restore Time |
+|--------|-----------|---------|--------------------|-----------------------|
+| 1 | 1 (Chrome) | user_disconnect | < 2.0s | < 3.0s |
+| 2 | 1 (LXTerminal) | inactivity_timeout | < 1.0s | < 2.0s |
+| 3 | 4 (All supported apps) | user_disconnect | < 4.0s | < 5.0s |
+| 4 | 8 (4 supported, 4 generic) | inactivity_timeout | < 6.0s | < 8.0s |
+| 5 | 12 (Heavy generic load) | user_disconnect | < 8.0s | < 10.0s |
+| 6 | 0 (Empty desktop) | user_disconnect | < 0.5s | N/A |
+| 7 | 2 (Chrome w/ 50 tabs) | inactivity_timeout | < 3.0s | < 5.0s |
+| 8 | 5 (Terminals in diff CWDs) | user_disconnect | < 4.0s | < 6.0s |
+| 9 | 1 (Root elevated app) | user_disconnect | < 1.0s | < 2.0s (Should skip) |
+| 10 | 10 (Rapid VM switch) | user_disconnect | < 8.0s | < 8.0s |
+
+## 4. Results
+
+| Test # | Actual Save Time | Actual Restore Time | Apps Restored | Handler Matches | Notes |
+|--------|------------------|---------------------|---------------|-----------------|-------|
+| 1 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 2 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 3 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 4 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 5 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 6 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 7 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 8 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 9 | *TBD* | *TBD* | *TBD* | *TBD* | |
+| 10| *TBD* | *TBD* | *TBD* | *TBD* | |
+
+## 5. How to Reproduce
+
+1. Boot a fresh Ubuntu 24.04 LTS VM with the LXQt desktop environment.
+2. Install the JioPC Session Hibernate package: `sudo dpkg -i jiopc-session-hibernate.deb`
+3. Launch the applications required for the specific Test # row.
+4. Manually trigger the capture hook.
+5. Extract the save time directly from `cat ~/.local/share/jiopc/hibernate/session-state.json | grep save_duration_ms`
+6. Log out of the LXQt session and log back in.
+7. Click "Restore" on the Zenity prompt.
+8. Read the execution latency from `cat ~/.local/share/jiopc/hibernate/restore.log`.
+9. Read the success rate from `cat ~/.local/share/jiopc/hibernate/session-state-last.json`.
+
+## 6. Success Metrics
+
+Our solution must fulfill the core problem statement constraints to pass evaluation:
+- **State Save Time < 10 seconds**: Required
+- **Apps Relaunched > 80%**: Required
+- **Chrome Tabs Restored 100%**: Required
+- **Window Positions Within 50px**: > 80% (Best-effort based on resolution sync)
