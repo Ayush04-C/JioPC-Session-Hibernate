@@ -14,6 +14,7 @@
 #     - "shell_cwd": looks up child shell processes to extract the true working directory.
 #     - "cwd_arg": extracts cwd from window data and passes it as a positional argument.
 #     - "cmdline_arg": extracts cmdline[1] from window data and passes it as a positional argument.
+#     - "window_title_search": parses window title and searches filesystem for the document path.
 # - restore_flag: string — the flag to append (use empty string "" if not applicable).
 # - restore_supported: boolean — indicates if the app can be reliably restored.
 # - description: string — one line explaining what this handler does.
@@ -43,8 +44,8 @@ handlers:
 
   - name: libreoffice
     match_pattern: "libreoffice|soffice"
-    restore_strategy: cmdline_arg
+    restore_strategy: window_title_search
     restore_flag: ""
     restore_supported: true
-    description: "Restores LibreOffice with the previously open document using cmdline argument"
+    description: "Restores LibreOffice with the previously open document using window_title_search"
 

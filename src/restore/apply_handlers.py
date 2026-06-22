@@ -98,6 +98,37 @@ def _get_shell_cwd(terminal_pid: int | None) -> str | None:
         
     return None
 
+def _get_libreoffice_doc_path(window_title: str) -> str | None:
+    """
+    Extract the document path from a LibreOffice window title.
+    LibreOffice window title format: "filename.odt - LibreOffice Writer"
+    or "filename.ods - LibreOffice Calc" etc.
+    """
+    if not window_title:
+        return None
+        
+    try:
+        if " - LibreOffice" in window_title:
+            filename = window_title.split(" - LibreOffice")[0].strip()
+            if not filename:
+                return None
+                
+            import subprocess
+            result = subprocess.run(
+                ["find", "/home/user", "-name", filename, "-type", "f", "-maxdepth", "5"],
+                capture_output=True, text=True
+            )
+            
+            if result.returncode == 0 and result.stdout:
+                lines = result.stdout.strip().split('\n')
+                if lines and lines[0]:
+                    return lines[0]
+                    
+    except Exception as e:
+        logging.warning(f"Error finding LibreOffice document for title '{window_title}': {e}")
+        
+    return None
+
 def _build_restore_args(handler: dict, window: dict) -> list[str]:
     """
     Implements the logic to extract restore arguments based on restore_strategy.
@@ -138,6 +169,15 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
                 return [cmdline[1]]
             return []
             
+        elif strategy == 'window_title_search':
+            app_name = window.get('app_name', '')
+            doc_path = _get_libreoffice_doc_path(app_name)
+            if doc_path:
+                return [doc_path]
+            logging.warning(f"LibreOffice document path could not be determined for '{app_name}'.")
+            window['restore_supported'] = False
+            return []
+            
         else:
             logging.warning(f"Unknown restore_strategy '{strategy}' for handler '{handler.get('name')}'.")
             return []
@@ -156,8 +196,8 @@ def _apply_single_handler(window: dict, handlers: list) -> dict:
     
     if handler:
         enriched['handler'] = handler.get('name')
-        enriched['restore_args'] = _build_restore_args(handler, window)
         enriched['restore_supported'] = handler.get('restore_supported', False)
+        enriched['restore_args'] = _build_restore_args(handler, enriched)
     else:
         enriched['handler'] = None
         enriched['restore_args'] = []
