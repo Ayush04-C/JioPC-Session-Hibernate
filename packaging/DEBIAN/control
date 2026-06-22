@@ -1,0 +1,6 @@
+Package: jiopc-session-hibernate
+Version: 0.1.0
+Architecture: all
+Maintainer: Team JioPC-IIT Bombay
+Depends: python3, python3-yaml, wmctrl, zenity, libnotify-bin, xdotool
+Description: Cross-VM session hibernate and restore for JioPC

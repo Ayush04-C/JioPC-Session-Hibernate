@@ -1,0 +1,28 @@
+#!/bin/bash
+# postinst script for jiopc-session-hibernate
+
+set -e
+
+# Identify user (usually running via sudo dpkg -i)
+if [ -n "$SUDO_USER" ]; then
+    TARGET_USER="$SUDO_USER"
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+else
+    TARGET_USER=$(whoami)
+    USER_HOME=$HOME
+fi
+
+# Create hibernate directory for the installing user
+HIBERNATE_DIR="$USER_HOME/.local/share/jiopc/hibernate/"
+mkdir -p "$HIBERNATE_DIR"
+chown -R "$TARGET_USER:$TARGET_USER" "$HIBERNATE_DIR"
+
+# Set executable permissions on the Python scripts
+chmod +x /usr/lib/jiopc-hibernate/apply_handlers.py
+chmod +x /usr/lib/jiopc-hibernate/restore_service.py
+
+# Log successful installation
+logger "jiopc-session-hibernate installed successfully"
+echo "jiopc-session-hibernate installed successfully."
+
+exit 0
