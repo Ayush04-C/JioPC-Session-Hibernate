@@ -10,3 +10,15 @@ handlers:
     restore_strategy: cwd
     restore_flag: ""
     restore_supported: true
+
+  - name: pcmanfm-qt
+    match_pattern: "pcmanfm-qt|pcmanfm"
+    restore_strategy: cmdline_arg
+    restore_flag: ""
+    restore_supported: true
+
+  - name: libreoffice
+    match_pattern: "libreoffice|soffice"
+    restore_strategy: cmdline_arg
+    restore_flag: ""
+    restore_supported: true
