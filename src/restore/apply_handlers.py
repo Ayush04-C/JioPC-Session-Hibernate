@@ -2,6 +2,9 @@
 """
 Component C: Handler Registry & Per-App Logic
 Owner: Ayush
+
+This module enriches raw window data with application-specific restore instructions
+based on predefined handler configurations.
 """
 
 import os
@@ -21,7 +24,9 @@ LOG_PATH = os.path.expanduser("~/.local/share/jiopc/hibernate/apply_handlers.log
 # ==========================================
 # LOGGING SETUP
 # ==========================================
+# Ensure directory exists before setting up FileHandler
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -30,7 +35,12 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout)
     ]
 )
+
 def _load_handlers() -> list:
+    """
+    Loads handlers.yaml. Tries HANDLERS_CONFIG_PATH first, falls back to DEV_HANDLERS_PATH.
+    Returns an empty list if neither exists and logs an error.
+    """
     path_to_load = None
     if os.path.exists(HANDLERS_CONFIG_PATH):
         path_to_load = HANDLERS_CONFIG_PATH
@@ -50,6 +60,9 @@ def _load_handlers() -> list:
         return []
 
 def _match_handler(exec_path: str, handlers: list) -> dict | None:
+    """
+    Iterates handlers and uses re.search() to find the first match against exec_path.
+    """
     if not exec_path:
         return None
         
@@ -59,7 +72,12 @@ def _match_handler(exec_path: str, handlers: list) -> dict | None:
             return handler
             
     return None
+
 def _build_restore_args(handler: dict, window: dict) -> list[str]:
+    """
+    Implements the logic to extract restore arguments based on restore_strategy.
+    Never raises an exception — returns [] on any error and logs a warning.
+    """
     try:
         strategy = handler.get('restore_strategy')
         
@@ -80,9 +98,56 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             return []
             
         else:
-            logging.warning(f"Unknown restore_strategy '{strategy}'.")
+            logging.warning(f"Unknown restore_strategy '{strategy}' for handler '{handler.get('name')}'.")
             return []
             
     except Exception as e:
-        logging.warning(f"Error building restore args: {e}")
+        logging.warning(f"Error building restore args for handler '{handler.get('name')}': {e}")
         return []
+
+def _apply_single_handler(window: dict, handlers: list) -> dict:
+    """
+    Returns a new dict without mutating the input. Applies matched handler data.
+    """
+    enriched = dict(window)
+    
+    handler = _match_handler(enriched.get('exec', ''), handlers)
+    
+    if handler:
+        enriched['handler'] = handler.get('name')
+        enriched['restore_args'] = _build_restore_args(handler, window)
+        enriched['restore_supported'] = handler.get('restore_supported', False)
+    else:
+        enriched['handler'] = None
+        enriched['restore_args'] = []
+        enriched['restore_supported'] = False
+        
+    return enriched
+
+def enrich_windows(raw_windows: list[dict]) -> list[dict]:
+    """
+    THE PUBLIC INTERFACE
+    Loops through every window, applies the correct handler logic, and wraps
+    everything in a try/except block to ensure safe processing.
+    """
+    handlers = _load_handlers()
+    enriched_windows = []
+    matched_count = 0
+    
+    for window in raw_windows:
+        try:
+            enriched = _apply_single_handler(window, handlers)
+            enriched_windows.append(enriched)
+            if enriched.get('handler') is not None:
+                matched_count += 1
+        except Exception as e:
+            logging.error(f"Error processing window {window.get('win_id', 'unknown')}: {e}")
+            safe_window = dict(window)
+            safe_window['handler'] = None
+            safe_window['restore_args'] = []
+            safe_window['restore_supported'] = False
+            enriched_windows.append(safe_window)
+            
+    logging.info(f"Enriched {len(enriched_windows)} windows, {matched_count} matched handlers.")
+    return enriched_windows
+
