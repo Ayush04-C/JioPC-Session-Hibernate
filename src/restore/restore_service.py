@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Component E: Restore Flow on Login
-Owner: Ayush
+
 """
 
 import os
