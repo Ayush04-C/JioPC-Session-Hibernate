@@ -1,14 +1,18 @@
 """JSON writer module for the save pipeline.
 
-This module is responsible for explicitly serializing a SessionState object
-and persisting it to a JSON file.
+This module is responsible for explicitly serializing a SessionState object,
+enriching it via handlers, and persisting it atomically to a JSON file.
 """
 
 import json
 import logging
-from datetime import datetime
+import os
+import socket
+from datetime import datetime, timezone
 
 from . import SessionState, SessionEntry, WindowInfo, ProcessInfo
+from .constants import SCHEMA_VERSION, DEFAULT_TRIGGER
+from ..restore import apply_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +32,16 @@ def _window_to_dict(window: WindowInfo) -> dict:
         A dictionary representation of the WindowInfo object.
     """
     return {
-        "window_id": window.window_id,
-        "desktop": window.desktop,
-        "x": window.x,
-        "y": window.y,
-        "width": window.width,
-        "height": window.height,
-        "hostname": window.hostname,
-        "title": window.title,
+        "win_id": window.window_id,
+        "app_name": window.title,
+        "geometry": {
+            "x": window.x,
+            "y": window.y,
+            "width": window.width,
+            "height": window.height
+        },
+        "desktop": str(window.desktop),
+        "has_unsaved": "*" in window.title
     }
 
 
@@ -48,11 +54,13 @@ def _process_to_dict(process: ProcessInfo) -> dict:
     Returns:
         A dictionary representation of the ProcessInfo object.
     """
+    exec_path = process.executable or None
+
     return {
-        "pid": process.pid,
-        "executable": process.executable,
-        "cwd": process.cwd,
+        "exec": exec_path,
         "cmdline": process.cmdline,
+        "cwd": process.cwd if process.cwd else None,
+        "pid": process.pid if process.pid else None
     }
 
 
@@ -63,58 +71,121 @@ def _entry_to_dict(entry: SessionEntry) -> dict:
         entry: The SessionEntry object.
 
     Returns:
-        A dictionary representation of the SessionEntry object.
+        A dictionary representation of the SessionEntry object with
+        pre-initialized handler fields.
     """
+    window_dict = _window_to_dict(entry.window)
+    process_dict = _process_to_dict(entry.process)
+    
     return {
-        "window": _window_to_dict(entry.window),
-        "process": _process_to_dict(entry.process),
+        "win_id": window_dict["win_id"],
+        "app_name": window_dict["app_name"],
+        "exec": process_dict["exec"],
+        "cmdline": process_dict["cmdline"],
+        "handler": None,
+        "restore_args": [],
+        "geometry": window_dict["geometry"],
+        "restore_supported": False,
+        "cwd": process_dict["cwd"],
+        "has_unsaved": window_dict["has_unsaved"],
+        "pid": process_dict["pid"],
+        "desktop": window_dict["desktop"]
     }
 
 
 def _session_to_dict(session: SessionState) -> dict:
-    """Serializes a SessionState object to a dictionary.
+    """Serializes a SessionState object to a dictionary and enriches it.
 
     Args:
         session: The SessionState object.
 
     Returns:
         A dictionary representation of the SessionState object.
+
+    Raises:
+        JsonWriterError: If handler enrichment fails.
     """
+    raw_windows = []
+    for entry in session.entries:
+        if str(entry.window.desktop) == "-1":
+            continue
+        raw_windows.append(_entry_to_dict(entry))
+        
+    try:
+        enriched_windows = apply_handlers.enrich_windows(raw_windows)
+    except Exception as e:
+        raise JsonWriterError(f"Handler enrichment failed: {e}") from e
+        
+    saved_at = session.timestamp.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    
     return {
-        "timestamp": session.timestamp.isoformat(),
-        "entries": [_entry_to_dict(entry) for entry in session.entries],
+        "schema_version": SCHEMA_VERSION,
+        "saved_at": saved_at,
+        "trigger": DEFAULT_TRIGGER,
+        "windows": enriched_windows,
+        "meta": {
+            "total_windows": len(enriched_windows),
+            "restored_count": None,
+            "hostname": socket.gethostname(),
+            "display": os.environ.get("DISPLAY", "")
+        }
     }
 
 
-def write_session(session: SessionState, path: str) -> None:
-    """Serializes and writes a SessionState object to a JSON file.
+def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -> None:
+    """Serializes and writes a SessionState object to a JSON file atomically.
 
     Args:
         session: The SessionState object to serialize.
         path: The file path where the JSON data will be written.
+        save_duration_ms: The duration taken to capture the session state.
 
     Raises:
-        JsonWriterError: If an error occurs during file writing.
+        JsonWriterError: If an error occurs during serialization or file writing.
     """
     logger.debug(f"Starting serialization for SessionState with {len(session.entries)} entries.")
     
     try:
         data = _session_to_dict(session)
+        final_data = {
+            "schema_version": data["schema_version"],
+            "saved_at": data["saved_at"],
+            "trigger": data["trigger"],
+            "save_duration_ms": save_duration_ms,
+            "windows": data["windows"],
+            "meta": data["meta"]
+        }
+    except JsonWriterError:
+        raise JsonWriterError(f"Failed to serialize session state: {e}") from e
     except Exception as e:
         logger.error(f"Failed to serialize session state: {e}")
         raise JsonWriterError(f"Failed to serialize session state: {e}") from e
 
-    logger.debug(f"Starting write to {path}.")
+    logger.debug(f"Starting atomic write to {path}.")
+    temp_path = f"{path}.tmp"
     
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(final_data, f, indent=4)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, path)
         logger.info(f"Successfully wrote session state to {path}.")
     except OSError as e:
         logger.error(f"Failed to write session state to {path}: {e}")
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
         raise JsonWriterError(f"Failed to write session state to {path}: {e}") from e
     except TypeError as e:
         logger.error(f"Failed to serialize JSON data for {path}: {e}")
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
         raise JsonWriterError(f"Failed to serialize JSON data for {path}: {e}") from e
 
 
@@ -124,7 +195,6 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
-    # Construct a sample session in memory
     sample_window = WindowInfo(
         window_id="0x0500000a",
         desktop=0,
@@ -156,6 +226,6 @@ if __name__ == "__main__":
     test_path = "sample_session.json"
     
     try:
-        write_session(sample_session, test_path)
+        write_session(sample_session, test_path, 150)
     except JsonWriterError as e:
         logger.error(f"Test failed: {e}")
