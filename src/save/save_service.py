@@ -8,6 +8,7 @@ the building and writing of the session state.
 import logging
 import sys
 import time
+import signal
 from pathlib import Path
 
 from .constants import SESSION_DIRECTORY, DEFAULT_SESSION_PATH
@@ -50,6 +51,25 @@ def _setup_logging() -> None:
     root_logger.addHandler(stream_handler)
 
 
+def _gracefully_close_chrome(session) -> None:
+    """
+    Sends a clean wmctrl close request to all Chrome windows so they flush their state.
+    This prevents the 'Chrome didn't shut down correctly' crash bubble.
+    """
+    import subprocess
+    for entry in session.entries:
+        if entry.process and entry.process.executable and "chrome" in entry.process.executable.lower():
+            try:
+                subprocess.run(["wmctrl", "-i", "-c", entry.window.window_id], timeout=2)
+                logger.info(f"Sent clean close signal to Chrome window {entry.window.window_id}")
+            except Exception as e:
+                logger.warning(f"Failed to cleanly close Chrome: {e}")
+
+def timeout_handler(signum, frame):
+    """Fired if the execution exceeds the strict time budget."""
+    sys.stderr.write("Capture routine exceeded 10-second time budget. Aborting safely.\n")
+    sys.exit(1)
+
 def main() -> None:
     """Executes the main orchestration flow for session capture.
 
@@ -57,6 +77,9 @@ def main() -> None:
     and writes the final JSON payload safely. Exits with 0 on success or 1
     on failure.
     """
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(10)  # Enforce strict 10-second time budget
+
     _ensure_runtime_directory()
     _setup_logging()
     
@@ -74,7 +97,11 @@ def main() -> None:
         logger.info("Writing session state.")
         write_session(session, DEFAULT_SESSION_PATH, save_duration_ms)
         
+        # Give Chrome a chance to write its session to disk
+        _gracefully_close_chrome(session)
+        
         logger.info("Capture completed successfully.")
+        signal.alarm(0)  # Cancel the alarm on success
         sys.exit(0)
         
     except JsonWriterError:

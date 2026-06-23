@@ -26,6 +26,7 @@ class WindowInfo:
     height: int
     hostname: str
     title: str
+    pid: int = 0
 
 
 @dataclass(frozen=True)

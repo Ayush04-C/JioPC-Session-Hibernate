@@ -6,8 +6,8 @@ constants used throughout the session capture process.
 
 import os
 
-# Command to discover open windows
-WMCTRL_COMMAND = ("wmctrl", "-lG")
+# Command to discover open windows (includes PID)
+WMCTRL_COMMAND = ("wmctrl", "-lpG")
 
 # Command to get the PID of a specific window
 XDOTOOL_GET_PID_COMMAND = ("xdotool", "getwindowpid")
