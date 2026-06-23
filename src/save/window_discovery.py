@@ -8,7 +8,8 @@ import logging
 import subprocess
 from typing import Optional
 
-from .models import WindowInfo
+from . import WindowInfo
+from .constants import WMCTRL_COMMAND
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def _run_wmctrl() -> str:
     """
     try:
         result = subprocess.run(
-            WMCTRL_COMMAND,
+            ["wmctrl", "-lG"],
             capture_output=True,
             text=True,
             check=True
@@ -92,7 +93,7 @@ def _parse_output(output: str) -> list[WindowInfo]:
     Returns:
         A list of WindowInfo objects successfully parsed from the output.
     """
-    windows = []
+    windows: list[WindowInfo] = []
     for line in output.splitlines():
         line = line.strip()
         if not line:
@@ -130,6 +131,6 @@ if __name__ == "__main__":
     try:
         discovered_windows = discover_windows()
         for window in discovered_windows:
-            logging.info(f"Discovered window: {window}")
+            logger.info(f"Discovered window: {window}")
     except WindowDiscoveryError as e:
-        logging.error(f"Window discovery failed: {e}")
+        logger.error(f"Window discovery failed: {e}")
