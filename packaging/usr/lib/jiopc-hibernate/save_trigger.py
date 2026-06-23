@@ -48,15 +48,16 @@ def main():
     try:
         bus = dbus.SessionBus()
         
-        # 1. Listen for the native LXQt pre-logout signal
+        # 1. Listen for the native LXQt pre-logout signal (case-sensitive!)
         bus.add_signal_receiver(
             signal_handler,
-            signal_name="AboutToLeave",
+            signal_name="aboutToLeave",
             dbus_interface="org.lxqt.session"
         )
         
         # 2. Add global match for logout method calls (for lxqt-leave dialog)
-        bus.add_match_string("type='method_call',member='logout'")
+        # eavesdrop=true is required to intercept method calls not addressed to us
+        bus.add_match_string("eavesdrop='true',type='method_call',member='logout'")
         bus.add_message_filter(message_filter)
         
         loop = GLib.MainLoop()
