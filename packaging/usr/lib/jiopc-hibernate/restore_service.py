@@ -49,7 +49,24 @@ def _is_stale(saved_at_str: str) -> bool:
 
 def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
     try:
+        # The Problem Statement explicitly recommends using notify-send for this prompt
         cmd = [
+            "notify-send",
+            "--urgency=critical",
+            "--action=yes=Restore",
+            "--action=no=Dismiss",
+            "JioPC Session Restore",
+            f"Restore your previous session?\nSaved: {saved_at_str}\nApps: {window_count}"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        # notify-send outputs the chosen action key (e.g. "yes")
+        if result.stdout.strip() == "yes":
+            return True
+        elif result.stdout.strip() == "no":
+            return False
+            
+        # If notify-send didn't block or return an action, fallback to zenity
+        zenity_cmd = [
             "zenity", "--question",
             "--title=JioPC Session Restore",
             f"--text=Restore your previous session?\n\nSaved: {saved_at_str}\nApps: {window_count}",
@@ -57,13 +74,10 @@ def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
             "--cancel-label=Dismiss",
             "--width=400"
         ]
-        result = subprocess.run(cmd, capture_output=True)
-        return result.returncode == 0
-    except FileNotFoundError:
-        logging.warning("zenity not found, proceeding without confirmation.")
-        return True
+        zenity_result = subprocess.run(zenity_cmd, capture_output=True)
+        return zenity_result.returncode == 0
     except Exception as e:
-        logging.warning(f"Error showing zenity dialog: {e}")
+        logging.warning(f"Error showing dialog: {e}")
         return False
 
 def _restore_geometry(app_name: str, geometry: dict) -> None:
