@@ -1,12 +1,15 @@
 #!/bin/bash
 set -e
 
-# Step 1: Remove the autostart entry so it doesn't run after uninstall
+# Step 1: Disable the Component A auto-save hook so it stops firing on logout
+systemctl --global disable jiopc-save-on-logout.service 2>/dev/null || true
+
+# Step 2: Remove the autostart entry so restore doesn't run after uninstall
 rm -f /etc/xdg/autostart/jiopc-restore.desktop || true
 # Clean up fallback path as well
 rm -f /usr/share/autostart/jiopc-restore.desktop || true
 
-# Step 2: Print to stdout
+# Step 3: Print to stdout
 echo "jiopc-session-hibernate will be removed." || true
 
 exit 0

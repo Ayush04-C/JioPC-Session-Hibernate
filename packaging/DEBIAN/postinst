@@ -1,21 +1,33 @@
 #!/bin/bash
 set -e
 
-# Step 1: Set executable permissions on the two Python scripts
+# Step 1: Set executable permissions on the Python scripts
 chmod +x /usr/lib/jiopc-hibernate/apply_handlers.py || true
 chmod +x /usr/lib/jiopc-hibernate/restore_service.py || true
 
-# Step 2: Create the hibernate state directory in the home directory
+# Step 2: Create the hibernate state directory under the JioPC user's home
 mkdir -p /home/user/.local/share/jiopc/hibernate || true
 chown -R user:user /home/user/.local/share/jiopc || true
 
-# Step 3: Set correct permissions on the installed files
+# Step 3: Set correct permissions on the installed config/autostart files
 chmod 644 /usr/lib/jiopc-hibernate/handlers/handlers.yaml || true
 chmod 644 /etc/xdg/autostart/jiopc-restore.desktop || true
 # Fallback in case it was installed to usr/share/autostart instead
 chmod 644 /usr/share/autostart/jiopc-restore.desktop 2>/dev/null || true
 
-# Step 4: Print to stdout
+# Step 4: Set permissions on the systemd user service unit
+chmod 644 /etc/systemd/user/jiopc-save-on-logout.service || true
+
+# Step 5: Enable the Component A hook globally for all users.
+# This makes systemd automatically run save_service.py (via ExecStop) whenever
+# any user's graphical session ends — no manual button or action required.
+systemctl --global enable jiopc-save-on-logout.service 2>/dev/null || true
+
+# Reload the systemd user daemon so the new unit is picked up immediately
+# (affects already-running sessions on this machine)
+systemctl --user daemon-reload 2>/dev/null || true
+
+# Step 6: Print to stdout
 echo "jiopc-session-hibernate installed successfully." || true
 
 exit 0
