@@ -7,6 +7,7 @@ Type=oneshot
 # RemainAfterExit keeps this service "active" for the entire session lifetime.
 # systemd will then run ExecStop when the user's session is torn down on logout.
 RemainAfterExit=yes
+Environment=DISPLAY=:0
 ExecStart=/bin/true
 
 # Component A: fires automatically on ANY logout path — LXQt panel button,
