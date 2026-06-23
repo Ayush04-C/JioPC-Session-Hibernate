@@ -83,11 +83,12 @@ def lookup_pid(window: WindowInfo) -> int | None:
     Returns:
         The integer PID of the owning process, or None if it could not
         be determined.
-
-    Raises:
-        PidLookupError: If the underlying PID lookup mechanism fails.
     """
-    logger.debug(f"Looking up PID for window: {window.window_id} ({window.title})")
+    if window.pid > 0:
+        logger.debug(f"Using wmctrl-provided PID {window.pid} for window: {window.window_id}")
+        return window.pid
+        
+    logger.debug(f"wmctrl PID is 0. Falling back to xdotool for window: {window.window_id} ({window.title})")
     process = _run_xdotool(window)
     if process is None:
         return None

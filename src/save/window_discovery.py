@@ -49,26 +49,27 @@ def _parse_line(line: str) -> Optional[WindowInfo]:
     """Parses a single line of wmctrl output into a WindowInfo object.
 
     Args:
-        line: A single line of output from wmctrl -lG.
+        line: A single line of output from wmctrl -lpG.
 
     Returns:
         A WindowInfo object if the line was parsed successfully, or None
         if the line was malformed.
     """
-    parts = line.split(maxsplit=7)
-    if len(parts) < 8:
-        logger.warning(f"Malformed wmctrl output line (expected at least 8 parts): {line!r}")
+    parts = line.split(maxsplit=8)
+    if len(parts) < 9:
+        logger.warning(f"Malformed wmctrl output line (expected at least 9 parts): {line!r}")
         return None
 
     try:
         window_id = parts[0]
         desktop = int(parts[1])
-        x = int(parts[2])
-        y = int(parts[3])
-        width = int(parts[4])
-        height = int(parts[5])
-        hostname = parts[6]
-        title = parts[7]
+        pid = int(parts[2])
+        x = int(parts[3])
+        y = int(parts[4])
+        width = int(parts[5])
+        height = int(parts[6])
+        hostname = parts[7]
+        title = parts[8]
 
         return WindowInfo(
             window_id=window_id,
@@ -78,7 +79,8 @@ def _parse_line(line: str) -> Optional[WindowInfo]:
             width=width,
             height=height,
             hostname=hostname,
-            title=title
+            title=title,
+            pid=pid
         )
     except ValueError as e:
         logger.warning(f"Failed to parse numeric values in wmctrl output line: {line!r} - Error: {e}")
