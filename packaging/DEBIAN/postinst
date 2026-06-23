@@ -18,16 +18,31 @@ chmod 644 /usr/share/autostart/jiopc-restore.desktop 2>/dev/null || true
 # Step 4: Set permissions on the systemd user service unit
 chmod 644 /etc/systemd/user/jiopc-save-on-logout.service || true
 
-# Step 5: Enable the Component A hook globally for all users.
-# This makes systemd automatically run save_service.py (via ExecStop) whenever
-# any user's graphical session ends — no manual button or action required.
+# Step 5: Enable the service globally so it auto-starts on every future login
+# for all users on this machine (no user action ever required).
 systemctl --global enable jiopc-save-on-logout.service 2>/dev/null || true
 
-# Reload the systemd user daemon so the new unit is picked up immediately
-# (affects already-running sessions on this machine)
-systemctl --user daemon-reload 2>/dev/null || true
+# Step 6: Also activate it immediately for the currently logged-in session
+# so dpkg -i takes effect right now — no logout/login cycle needed.
+# postinst runs as root, so we must supply the user's runtime environment
+# explicitly for systemctl --user to reach the correct D-Bus daemon.
+JIOPC_USER="user"
+JIOPC_UID=$(id -u "$JIOPC_USER" 2>/dev/null) || true
+JIOPC_RUNTIME="/run/user/$JIOPC_UID"
 
-# Step 6: Print to stdout
+if [ -n "$JIOPC_UID" ] && [ -d "$JIOPC_RUNTIME" ]; then
+    runuser -u "$JIOPC_USER" -- \
+        env XDG_RUNTIME_DIR="$JIOPC_RUNTIME" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=$JIOPC_RUNTIME/bus" \
+        systemctl --user daemon-reload 2>/dev/null || true
+
+    runuser -u "$JIOPC_USER" -- \
+        env XDG_RUNTIME_DIR="$JIOPC_RUNTIME" \
+            DBUS_SESSION_BUS_ADDRESS="unix:path=$JIOPC_RUNTIME/bus" \
+        systemctl --user start jiopc-save-on-logout.service 2>/dev/null || true
+fi
+
+# Step 7: Print to stdout
 echo "jiopc-session-hibernate installed successfully." || true
 
 exit 0

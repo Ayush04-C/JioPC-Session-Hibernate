@@ -1,23 +1,23 @@
 [Unit]
 Description=JioPC Session Hibernate - Automatically capture session state on logout
 Documentation=https://github.com/jiopc/session-hibernate
-# Start after the graphical session is fully up
-After=graphical-session.target
-PartOf=graphical-session.target
 
 [Service]
 Type=oneshot
 # RemainAfterExit keeps this service "active" for the entire session lifetime.
-# systemd will then run ExecStop when the session is torn down on logout.
+# systemd will then run ExecStop when the user's session is torn down on logout.
 RemainAfterExit=yes
 ExecStart=/bin/true
 
-# This is the ignition switch (Component A). It fires automatically on ANY
-# logout path: LXQt panel button, network drop, VM timeout, xss-lock, etc.
+# Component A: fires automatically on ANY logout path — LXQt panel button,
+# network drop, VM timeout, xss-lock idle — no user action required.
 ExecStop=bash -c "cd /usr/lib/jiopc-hibernate && python3 -m save.save_service"
 
 # Match the 10-second capture budget from design.md, with 2s grace margin.
 TimeoutStopSec=12
 
 [Install]
-WantedBy=graphical-session.target
+# default.target is ALWAYS activated on every user login, regardless of
+# desktop environment. More reliable than graphical-session.target which
+# LXQt does not fully activate on this system.
+WantedBy=default.target
