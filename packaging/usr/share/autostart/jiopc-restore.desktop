@@ -1,6 +1,0 @@
-[Desktop Entry]
-Type=Application
-Exec=/usr/lib/jiopc-hibernate/restore_service.py
-OnlyShowIn=LXQt;
-Name=JioPC Session Restore
-Comment=Restore previous session on login

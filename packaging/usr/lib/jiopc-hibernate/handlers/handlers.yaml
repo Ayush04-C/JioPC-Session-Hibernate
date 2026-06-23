@@ -1,36 +1,51 @@
 # =============================================================================
 # Handler Registry for JioPC Session Hibernate
-# Owner: Ayush
+#
+# This file is the handler registry — a configurable master list that maps 
+# applications to their capture and restore behavior. Adding a new app handler 
+# requires ONLY adding a new entry to this YAML file — zero Python code changes.
 #
 # Keys:
-# - name: Human-readable identifier for the application handler.
-# - match_pattern: Regex or string to match against wmctrl output or process names.
-# - restore_strategy: How to restore (e.g., 'cli_args', 'session_bus', 'desktop_file').
-# - restore_flag: The CLI flag to append if using cli_args strategy (or empty string).
-# - restore_supported: Boolean indicating if we know how to reliably restore this app.
+# - name: string — unique identifier for the application handler (e.g. "chrome").
+# - match_pattern: string — regex pattern matched against the executable path.
+# - restore_strategy: string — one of: "flag", "cwd", "shell_cwd", "cmdline_arg", "cwd_arg".
+#     - "flag": appends restore_flag directly when relaunching.
+#     - "cwd": builds --working-directory=<cwd> using the cwd field from window data.
+#     - "shell_cwd": looks up child shell processes to extract the true working directory.
+#     - "cwd_arg": extracts cwd from window data and passes it as a positional argument.
+#     - "cmdline_arg": extracts cmdline[1] from window data and passes it as a positional argument.
+#     - "window_title_search": parses window title and searches filesystem for the document path.
+# - restore_flag: string — the flag to append (use empty string "" if not applicable).
+# - restore_supported: boolean — indicates if the app can be reliably restored.
+# - description: string — one line explaining what this handler does.
 # =============================================================================
 
 handlers:
   - name: chrome
     match_pattern: "google-chrome|chromium"
-    restore_strategy: cli_args
-    restore_flag: "--restore-last-session"
+    restore_strategy: flag
+    restore_flag: "--no-sandbox --disable-gpu --restore-last-session"
     restore_supported: true
+    description: "Restores Chrome or Chromium using its native --restore-last-session flag"
 
-  - name: terminal
+  - name: lxterminal
     match_pattern: "lxterminal"
-    restore_strategy: cli_args
-    restore_flag: "--working-directory="
-    restore_supported: true
-
-  - name: filemanager
-    match_pattern: "pcmanfm-qt"
-    restore_strategy: cli_args
-    restore_flag: "-d"
-    restore_supported: true
-
-  - name: libreoffice
-    match_pattern: "soffice.bin|libreoffice"
-    restore_strategy: cli_args
+    restore_strategy: shell_cwd
     restore_flag: ""
     restore_supported: true
+    description: "Restores LXTerminal to its previous working directory using the shell_cwd strategy"
+
+  - name: pcmanfm-qt
+    match_pattern: "pcmanfm-qt|pcmanfm"
+    restore_strategy: cwd_arg
+    restore_flag: ""
+    restore_supported: true
+    description: "Restores PCManFM-Qt to the previously open folder using cmdline argument or cwd"
+
+  - name: libreoffice
+    match_pattern: "libreoffice|soffice"
+    restore_strategy: window_title_search
+    restore_flag: ""
+    restore_supported: true
+    description: "Restores LibreOffice with the previously open document using window_title_search"
+
