@@ -12,10 +12,10 @@ def main():
     with open(LOG_PATH, "a") as f:
         f.write("Save trigger daemon started. Monitoring DBus for LXQt pre-logout...\n")
         
-    # Listen to LXQt session bus for the pre-logout signal
-    # This guarantees execution BEFORE any window is killed.
+    # Listen to all signals on the session bus. We use dbus-monitor because 
+    # it doesn't crash if a specific destination isn't perfectly matched.
     process = subprocess.Popen(
-        ["gdbus", "monitor", "--session", "--dest", "org.lxqt.session"],
+        ["stdbuf", "-oL", "dbus-monitor", "type='signal'"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
