@@ -29,7 +29,7 @@ def _run_wmctrl() -> str:
     """
     try:
         result = subprocess.run(
-            ["wmctrl", "-lG"],
+            WMCTRL_COMMAND,
             capture_output=True,
             text=True,
             check=True
