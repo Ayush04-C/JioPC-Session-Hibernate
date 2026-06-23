@@ -6,11 +6,17 @@ import logging
 
 LOG_PATH = os.path.expanduser("~/.local/share/jiopc/hibernate/trigger.log")
 
+def log_msg(msg):
+    print(msg, flush=True)
+    try:
+        with open(LOG_PATH, "a") as f:
+            f.write(msg + "\n")
+    except Exception:
+        pass
+
 def main():
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-    
-    with open(LOG_PATH, "a") as f:
-        f.write("Save trigger daemon started. Monitoring DBus for LXQt pre-logout...\n")
+    log_msg("Save trigger daemon started. Monitoring DBus for LXQt pre-logout...")
         
     # Listen to all signals on the session bus. We use dbus-monitor because 
     # it doesn't crash if a specific destination isn't perfectly matched.
@@ -24,8 +30,7 @@ def main():
     try:
         for line in iter(process.stdout.readline, ''):
             if "AboutToLeave" in line or "Logout" in line:
-                with open(LOG_PATH, "a") as f:
-                    f.write("Caught DBus pre-logout signal. Running capture synchronously...\n")
+                log_msg("Caught DBus pre-logout signal. Running capture synchronously...")
                 
                 # Execute the capture script BEFORE the session tears down
                 subprocess.run(
@@ -34,15 +39,13 @@ def main():
                     timeout=5
                 )
                 
-                with open(LOG_PATH, "a") as f:
-                    f.write("Pre-logout capture completed successfully.\n")
+                log_msg("Pre-logout capture completed successfully.")
                 
                 # Break to allow the script to exit gracefully
                 break
                 
     except Exception as e:
-        with open(LOG_PATH, "a") as f:
-            f.write(f"Daemon crashed: {e}\n")
+        log_msg(f"Daemon crashed: {e}")
     finally:
         process.terminate()
 
