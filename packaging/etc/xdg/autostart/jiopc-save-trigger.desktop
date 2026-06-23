@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=JioPC Session Capture Trigger
+Comment=Catches LXQt logout signals to automatically capture state
+Exec=/usr/bin/python3 /usr/lib/jiopc-hibernate/save_trigger.py
+Terminal=false
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
