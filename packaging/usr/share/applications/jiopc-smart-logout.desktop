@@ -1,9 +1,0 @@
-[Desktop Entry]
-Version=1.0
-Name=Smart Log Out (Save Session)
-Comment=Saves the current JioPC session and logs out safely
-Exec=bash -c "python3 /usr/lib/jiopc-hibernate/save/save_service.py && lxqt-leave --logout"
-Icon=system-log-out
-Terminal=false
-Type=Application
-Categories=System;

@@ -1,0 +1,4 @@
+#!/bin/bash
+# Intercepts LXQt logout to automatically save the session before the display dies
+cd /usr/lib/jiopc-hibernate && python3 -m save.save_service
+exec /usr/bin/lxqt-leave "$@"

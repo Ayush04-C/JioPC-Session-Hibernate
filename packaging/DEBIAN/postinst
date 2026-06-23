@@ -15,12 +15,14 @@ chmod 644 /etc/xdg/autostart/jiopc-restore.desktop || true
 # Fallback in case it was installed to usr/share/autostart instead
 chmod 644 /usr/share/autostart/jiopc-restore.desktop 2>/dev/null || true
 
-# Step 4: Place Smart Logout icon on the desktop (Component A ignition switch)
-ln -sf /usr/share/applications/jiopc-smart-logout.desktop /home/user/Desktop/Smart-Logout.desktop 2>/dev/null || true
-chown user:user /home/user/Desktop/Smart-Logout.desktop 2>/dev/null || true
-chmod +x /home/user/Desktop/Smart-Logout.desktop 2>/dev/null || true
+# Step 4: Configure the automatic LXQt logout wrapper
+chmod +x /usr/local/bin/lxqt-leave || true
 
-# Step 5: Print to stdout
+# Step 5: Clean up old desktop shortcut if it exists from previous tests
+rm -f /home/user/Desktop/Smart-Logout.desktop 2>/dev/null || true
+rm -f /usr/share/applications/jiopc-smart-logout.desktop 2>/dev/null || true
+
+# Step 6: Print to stdout
 echo "jiopc-session-hibernate installed successfully." || true
 
 exit 0
