@@ -2,7 +2,9 @@
 import sys
 import os
 import subprocess
-import logging
+from gi.repository import GLib
+import dbus
+from dbus.mainloop.glib import DBusGMainLoop
 
 LOG_PATH = os.path.expanduser("~/.local/share/jiopc/hibernate/trigger.log")
 
@@ -14,42 +16,54 @@ def log_msg(msg):
     except Exception:
         pass
 
+def trigger_capture():
+    log_msg("Caught DBus pre-logout event! Running capture synchronously...")
+    try:
+        subprocess.run(
+            ["python3", "-m", "save.save_service"], 
+            cwd="/usr/lib/jiopc-hibernate", 
+            timeout=10
+        )
+        log_msg("Pre-logout capture completed successfully.")
+    except Exception as e:
+        log_msg(f"Capture failed: {e}")
+
+def signal_handler(*args, **kwargs):
+    trigger_capture()
+    sys.exit(0)
+
+def message_filter(bus, message):
+    if message.get_type() == dbus.Message.MESSAGE_TYPE_METHOD_CALL:
+        if message.get_member() == 'logout':
+            trigger_capture()
+            sys.exit(0)
+    return dbus.HANDLER_RESULT_NOT_YET_HANDLED
+
 def main():
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-    log_msg("Save trigger daemon started. Monitoring DBus for LXQt pre-logout...")
-        
-    # Listen to all DBus traffic (including Method Calls, not just Signals)
-    # because lxqt-leave might use a method call to trigger the logout.
-    process = subprocess.Popen(
-        ["stdbuf", "-oL", "dbus-monitor"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
+    log_msg("Save trigger daemon started. Native Python DBus monitoring active...")
+
+    DBusGMainLoop(set_as_default=True)
     
     try:
-        for line in iter(process.stdout.readline, ''):
-            line_lower = line.lower()
-            if "abouttoleave" in line_lower or "member=logout" in line_lower:
-                log_msg(f"Caught DBus pre-logout event! Line: {line.strip()}")
-                log_msg("Running capture synchronously...")
-                
-                # Execute the capture script BEFORE the session tears down
-                subprocess.run(
-                    ["python3", "-m", "save.save_service"], 
-                    cwd="/usr/lib/jiopc-hibernate", 
-                    timeout=5
-                )
-                
-                log_msg("Pre-logout capture completed successfully.")
-                
-                # Break to allow the script to exit gracefully
-                break
-                
+        bus = dbus.SessionBus()
+        
+        # 1. Listen for the native LXQt pre-logout signal
+        bus.add_signal_receiver(
+            signal_handler,
+            signal_name="AboutToLeave",
+            dbus_interface="org.lxqt.session"
+        )
+        
+        # 2. Add global match for logout method calls (for lxqt-leave dialog)
+        bus.add_match_string("type='method_call',member='logout'")
+        bus.add_message_filter(message_filter)
+        
+        loop = GLib.MainLoop()
+        loop.run()
     except Exception as e:
         log_msg(f"Daemon crashed: {e}")
-    finally:
-        process.terminate()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

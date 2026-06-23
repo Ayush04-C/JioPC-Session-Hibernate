@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=JioPC Inactivity Trigger
+Comment=Catches system idle timeout via xss-lock to capture state natively
+Exec=xss-lock -- /usr/lib/jiopc-hibernate/idle_locker.sh
+Terminal=false
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
