@@ -1,38 +1,50 @@
 #!/usr/bin/env python3
-import signal
 import sys
-import subprocess
-import time
-import logging
 import os
+import subprocess
+import logging
 
 LOG_PATH = os.path.expanduser("~/.local/share/jiopc/hibernate/trigger.log")
 
-def handle_sigterm(signum, frame):
-    with open(LOG_PATH, "a") as f:
-        f.write("Caught SIGTERM from LXQt session teardown. Running capture...\n")
-    
-    # Run the save service instantly before X11 dies
-    try:
-        subprocess.run(["python3", "-m", "save.save_service"], cwd="/usr/lib/jiopc-hibernate", timeout=5)
-        with open(LOG_PATH, "a") as f:
-            f.write("Capture completed successfully.\n")
-    except Exception as e:
-        with open(LOG_PATH, "a") as f:
-            f.write(f"Capture failed: {e}\n")
-            
-    sys.exit(0)
-
 def main():
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-    with open(LOG_PATH, "a") as f:
-        f.write("Save trigger daemon started. Waiting for LXQt SIGTERM...\n")
-        
-    signal.signal(signal.SIGTERM, handle_sigterm)
     
-    # Sleep endlessly
-    while True:
-        time.sleep(10)
+    with open(LOG_PATH, "a") as f:
+        f.write("Save trigger daemon started. Monitoring DBus for LXQt pre-logout...\n")
+        
+    # Listen to LXQt session bus for the pre-logout signal
+    # This guarantees execution BEFORE any window is killed.
+    process = subprocess.Popen(
+        ["gdbus", "monitor", "--session", "--dest", "org.lxqt.session"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True
+    )
+    
+    try:
+        for line in iter(process.stdout.readline, ''):
+            if "AboutToLeave" in line or "Logout" in line:
+                with open(LOG_PATH, "a") as f:
+                    f.write("Caught DBus pre-logout signal. Running capture synchronously...\n")
+                
+                # Execute the capture script BEFORE the session tears down
+                subprocess.run(
+                    ["python3", "-m", "save.save_service"], 
+                    cwd="/usr/lib/jiopc-hibernate", 
+                    timeout=5
+                )
+                
+                with open(LOG_PATH, "a") as f:
+                    f.write("Pre-logout capture completed successfully.\n")
+                
+                # Break to allow the script to exit gracefully
+                break
+                
+    except Exception as e:
+        with open(LOG_PATH, "a") as f:
+            f.write(f"Daemon crashed: {e}\n")
+    finally:
+        process.terminate()
 
 if __name__ == "__main__":
     main()

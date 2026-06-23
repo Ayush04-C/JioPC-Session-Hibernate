@@ -50,6 +50,20 @@ def _setup_logging() -> None:
     root_logger.addHandler(stream_handler)
 
 
+def _gracefully_close_chrome(session) -> None:
+    """
+    Sends a clean wmctrl close request to all Chrome windows so they flush their state.
+    This prevents the 'Chrome didn't shut down correctly' crash bubble.
+    """
+    import subprocess
+    for entry in session.entries:
+        if entry.process and entry.process.executable and "chrome" in entry.process.executable.lower():
+            try:
+                subprocess.run(["wmctrl", "-i", "-c", entry.window.window_id], timeout=2)
+                logger.info(f"Sent clean close signal to Chrome window {entry.window.window_id}")
+            except Exception as e:
+                logger.warning(f"Failed to cleanly close Chrome: {e}")
+
 def main() -> None:
     """Executes the main orchestration flow for session capture.
 
@@ -73,6 +87,9 @@ def main() -> None:
         
         logger.info("Writing session state.")
         write_session(session, DEFAULT_SESSION_PATH, save_duration_ms)
+        
+        # Give Chrome a chance to write its session to disk
+        _gracefully_close_chrome(session)
         
         logger.info("Capture completed successfully.")
         sys.exit(0)
