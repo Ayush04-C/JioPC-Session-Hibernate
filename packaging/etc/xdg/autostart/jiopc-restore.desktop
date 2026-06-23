@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=JioPC Session Restore
+Comment=Automatically restore previous session on login
+Exec=/usr/bin/python3 /usr/lib/jiopc-hibernate/restore_service.py
+OnlyShowIn=LXQt;
+X-LXQt-Need-Tray=false
+NoDisplay=true
+Terminal=false
+StartupNotify=false

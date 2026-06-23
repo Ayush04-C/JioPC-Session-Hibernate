@@ -1,28 +1,21 @@
 #!/bin/bash
-# postinst script for jiopc-session-hibernate
-
 set -e
 
-# Identify user (usually running via sudo dpkg -i)
-if [ -n "$SUDO_USER" ]; then
-    TARGET_USER="$SUDO_USER"
-    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-else
-    TARGET_USER=$(whoami)
-    USER_HOME=$HOME
-fi
+# Step 1: Set executable permissions on the two Python scripts
+chmod +x /usr/lib/jiopc-hibernate/apply_handlers.py || true
+chmod +x /usr/lib/jiopc-hibernate/restore_service.py || true
 
-# Create hibernate directory for the installing user
-HIBERNATE_DIR="$USER_HOME/.local/share/jiopc/hibernate/"
-mkdir -p "$HIBERNATE_DIR"
-chown -R "$TARGET_USER:$TARGET_USER" "$HIBERNATE_DIR"
+# Step 2: Create the hibernate state directory in the home directory
+mkdir -p /home/user/.local/share/jiopc/hibernate || true
+chown -R user:user /home/user/.local/share/jiopc || true
 
-# Set executable permissions on the Python scripts
-chmod +x /usr/lib/jiopc-hibernate/apply_handlers.py
-chmod +x /usr/lib/jiopc-hibernate/restore_service.py
+# Step 3: Set correct permissions on the installed files
+chmod 644 /usr/lib/jiopc-hibernate/handlers/handlers.yaml || true
+chmod 644 /etc/xdg/autostart/jiopc-restore.desktop || true
+# Fallback in case it was installed to usr/share/autostart instead
+chmod 644 /usr/share/autostart/jiopc-restore.desktop 2>/dev/null || true
 
-# Log successful installation
-logger "jiopc-session-hibernate installed successfully"
-echo "jiopc-session-hibernate installed successfully."
+# Step 4: Print to stdout
+echo "jiopc-session-hibernate installed successfully." || true
 
 exit 0

@@ -1,12 +1,12 @@
 #!/bin/bash
-# prerm script for jiopc-session-hibernate
-
 set -e
 
-# Remove autostart entry globally (handled by package manager usually, but just in case)
-rm -f /usr/share/autostart/jiopc-restore.desktop
+# Step 1: Remove the autostart entry so it doesn't run after uninstall
+rm -f /etc/xdg/autostart/jiopc-restore.desktop || true
+# Clean up fallback path as well
+rm -f /usr/share/autostart/jiopc-restore.desktop || true
 
-# Log successful uninstall
-logger "jiopc-session-hibernate uninstalled successfully"
+# Step 2: Print to stdout
+echo "jiopc-session-hibernate will be removed." || true
 
 exit 0
