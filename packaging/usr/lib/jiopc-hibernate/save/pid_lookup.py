@@ -33,16 +33,17 @@ def _run_xdotool(window: WindowInfo) -> subprocess.CompletedProcess[str]:
     command = list(XDOTOOL_GET_PID_COMMAND) + [window.window_id]
     
     try:
-        return subprocess.run(
+        result = subprocess.run(
             command,
             capture_output=True,
-            text=True,
-            check=True
+            text=True
         )
+        if result.returncode != 0:
+            logger.debug(f"xdotool returned exit code {result.returncode} for {window.window_id}: {result.stderr.strip()}")
+            return None
+        return result
     except FileNotFoundError as e:
         raise PidLookupError("xdotool utility not found. Please install it.") from e
-    except subprocess.CalledProcessError as e:
-        raise PidLookupError(f"xdotool command failed with exit code {e.returncode}: {e.stderr}") from e
     except Exception as e:
         raise PidLookupError(f"An unexpected error occurred while running xdotool: {e}") from e
 
@@ -88,6 +89,9 @@ def lookup_pid(window: WindowInfo) -> int | None:
     """
     logger.debug(f"Looking up PID for window: {window.window_id} ({window.title})")
     process = _run_xdotool(window)
+    if process is None:
+        return None
+        
     pid = _parse_pid(process.stdout)
     
     if pid is not None:

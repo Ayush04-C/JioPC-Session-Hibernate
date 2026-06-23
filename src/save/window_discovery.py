@@ -32,14 +32,15 @@ def _run_wmctrl() -> str:
         result = subprocess.run(
             WMCTRL_COMMAND,
             capture_output=True,
-            text=True,
-            check=True
+            text=True
         )
+        if result.returncode != 0:
+            logger.warning(f"wmctrl returned non-zero exit code (some windows may have closed during query): {result.stderr.strip()}")
+        # Always return stdout, even if there was an error, because wmctrl often
+        # outputs partial window lists before failing on a BadWindow error.
         return result.stdout
     except FileNotFoundError as e:
         raise WindowDiscoveryError("wmctrl utility not found. Please install it.") from e
-    except subprocess.CalledProcessError as e:
-        raise WindowDiscoveryError(f"wmctrl command failed with exit code {e.returncode}: {e.stderr}") from e
     except Exception as e:
         raise WindowDiscoveryError(f"An unexpected error occurred while running wmctrl: {e}") from e
 
