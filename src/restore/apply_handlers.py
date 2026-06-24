@@ -186,6 +186,29 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             window['restore_supported'] = False
             return []
             
+        elif strategy == 'pcmanfm_title_search':
+            app_name = window.get('app_name', '')
+            if not app_name:
+                return []
+            if app_name == 'user' or app_name == os.environ.get('USER'):
+                return [os.path.expanduser('~')]
+            else:
+                # Dynamically search the filesystem for a directory matching the title
+                import subprocess
+                try:
+                    result = subprocess.run(
+                        ["find", os.path.expanduser('~'), "-name", app_name, "-type", "d", "-maxdepth", "5"],
+                        capture_output=True, text=True
+                    )
+                    if result.returncode == 0 and result.stdout:
+                        lines = result.stdout.strip().split('\n')
+                        if lines and lines[0]:
+                            return [lines[0]]
+                except Exception as e:
+                    logging.warning(f"Failed to dynamically find directory '{app_name}' for pcmanfm: {e}")
+            return []
+            return []
+            
         else:
             logging.warning(f"Unknown restore_strategy '{strategy}' for handler '{handler.get('name')}'.")
             return []

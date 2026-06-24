@@ -155,7 +155,11 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             if cwd is not None:
                 flag = handler.get('restore_flag', '')
                 if '{shell_cwd}' in flag:
-                    return [flag.replace('{shell_cwd}', cwd)]
+                    if " " in flag:
+                        arg, var = flag.split(" ", 1)
+                        return [arg, var.replace('{shell_cwd}', cwd)]
+                    else:
+                        return [flag.replace('{shell_cwd}', cwd)]
                 else:
                     return [f"--working-directory={cwd}"]
             logging.warning(f"Both shell cwd and fallback cwd were None for handler '{handler.get('name')}'.")
@@ -180,6 +184,29 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
                 return [doc_path]
             logging.warning(f"LibreOffice document path could not be determined for '{app_name}'.")
             window['restore_supported'] = False
+            return []
+            
+        elif strategy == 'pcmanfm_title_search':
+            app_name = window.get('app_name', '')
+            if not app_name:
+                return []
+            if app_name == 'user' or app_name == os.environ.get('USER'):
+                return [os.path.expanduser('~')]
+            else:
+                # Dynamically search the filesystem for a directory matching the title
+                import subprocess
+                try:
+                    result = subprocess.run(
+                        ["find", os.path.expanduser('~'), "-name", app_name, "-type", "d", "-maxdepth", "5"],
+                        capture_output=True, text=True
+                    )
+                    if result.returncode == 0 and result.stdout:
+                        lines = result.stdout.strip().split('\n')
+                        if lines and lines[0]:
+                            return [lines[0]]
+                except Exception as e:
+                    logging.warning(f"Failed to dynamically find directory '{app_name}' for pcmanfm: {e}")
+            return []
             return []
             
         else:
@@ -222,6 +249,10 @@ def enrich_windows(raw_windows: list[dict]) -> list[dict]:
     for window in raw_windows:
         try:
             enriched = _apply_single_handler(window, handlers)
+            if enriched.get('handler') == 'ignore_app':
+                logging.info(f"Skipping ignored app: {enriched.get('exec')}")
+                continue
+                
             enriched_windows.append(enriched)
             if enriched.get('handler') is not None:
                 matched_count += 1

@@ -162,13 +162,30 @@ def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -
         raise JsonWriterError(f"Failed to serialize session state: {e}") from e
 
     logger.debug(f"Starting atomic write to {path}.")
-    temp_path = f"{path}.tmp"
+    temp_path = f"{path}.{os.getpid()}.tmp"
     
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(final_data, f, indent=4)
             f.flush()
             os.fsync(f.fileno())
+            
+        def _rotate_history(base_path: str) -> None:
+            try:
+                dir_name = os.path.dirname(base_path)
+                base_name = os.path.basename(base_path)
+                name, ext = os.path.splitext(base_name)
+                path_1 = os.path.join(dir_name, f"{name}-1{ext}")
+                path_2 = os.path.join(dir_name, f"{name}-2{ext}")
+                
+                if os.path.exists(path_1):
+                    os.replace(path_1, path_2)
+                if os.path.exists(base_path):
+                    os.replace(base_path, path_1)
+            except Exception as e:
+                logger.warning(f"Failed to rotate session history: {e}")
+                
+        _rotate_history(path)
         os.replace(temp_path, path)
         logger.info(f"Successfully wrote session state to {path}.")
     except OSError as e:
