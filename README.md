@@ -49,6 +49,14 @@ When a user disconnects or an inactivity timeout is reached, the capture hook in
 
 Upon logging into a new JioPC VM, the LxQt desktop environment triggers an XDG autostart entry. Our restore service wakes up, checks the JSON file for staleness (default 24 hours), and prompts the user with a native `notify-send` dialog. If approved, the service rapidly relaunches all applications non-blockingly, attempting to restore window geometry, tabs, directories, and documents.
 
+## Cross-VM Reassignment Compliance
+
+A strict requirement of this hackathon is that **Restore must work on a different VM**. Our architecture naturally and perfectly passes this rule by complying with the JioPC Floating VM model:
+
+1. **NFS Home Directory Persistence**: The core of our solution writes the `session-state.json` strictly to `~/.local/share/jiopc/hibernate/`. Because `~` resolves to the persistent `/home/user` NFS mount, the user's saved session history physically follows them to any VM they land on. 
+2. **Gold Image Compatibility**: The entire system ships as a clean `.deb` package. When baked into the identical OS Gold Image, our autostart hooks and python scripts are perfectly identical and available on every VM in the pool.
+3. **Stateless Restoration**: While our snapshot records VM metadata (like `hostname` and `display`) for debugging, the restore engine intentionally **ignores** these values. When the user logs in, the fresh VM pulls the JSON from the NFS drive and flawlessly rebuilds the session locally. It has exactly zero dependencies on VM-local state or hardcoded system IP addresses.
+
 ## Supported Apps
 
 | App | Restore Type | What Gets Restored |
