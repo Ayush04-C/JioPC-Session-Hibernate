@@ -226,6 +226,10 @@ def enrich_windows(raw_windows: list[dict]) -> list[dict]:
     for window in raw_windows:
         try:
             enriched = _apply_single_handler(window, handlers)
+            if enriched.get('handler') == 'ignore_app':
+                logging.info(f"Skipping ignored app: {enriched.get('exec')}")
+                continue
+                
             enriched_windows.append(enriched)
             if enriched.get('handler') is not None:
                 matched_count += 1
