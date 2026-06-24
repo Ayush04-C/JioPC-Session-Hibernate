@@ -221,7 +221,7 @@ def main() -> None:
             
         if report_lines:
             report_body = "\n".join(report_lines)
-            cmd = ["notify-send", "--urgency=normal", "Restore Summary", report_body]
+            cmd = ["notify-send", "-t", "5000", "--urgency=normal", "Restore Summary", report_body]
             subprocess.run(cmd, capture_output=True)
     except Exception as e:
         logging.error(f"Failed to send restore summary notification: {e}")
