@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Component E: Restore Flow on Login
-
+Owner: Ayush
 """
 
 import os
@@ -49,7 +49,24 @@ def _is_stale(saved_at_str: str) -> bool:
 
 def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
     try:
+        # The Problem Statement explicitly recommends using notify-send for this prompt
         cmd = [
+            "notify-send",
+            "--urgency=critical",
+            "--action=yes=Restore",
+            "--action=no=Dismiss",
+            "JioPC Session Restore",
+            f"Restore your previous session?\nSaved: {saved_at_str}\nApps: {window_count}"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        # notify-send outputs the chosen action key (e.g. "yes")
+        if result.stdout.strip() == "yes":
+            return True
+        elif result.stdout.strip() == "no":
+            return False
+            
+        # If notify-send didn't block or return an action, fallback to zenity
+        zenity_cmd = [
             "zenity", "--question",
             "--title=JioPC Session Restore",
             f"--text=Restore your previous session?\n\nSaved: {saved_at_str}\nApps: {window_count}",
@@ -57,13 +74,10 @@ def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
             "--cancel-label=Dismiss",
             "--width=400"
         ]
-        result = subprocess.run(cmd, capture_output=True)
-        return result.returncode == 0
-    except FileNotFoundError:
-        logging.warning("zenity not found, proceeding without confirmation.")
-        return True
+        zenity_result = subprocess.run(zenity_cmd, capture_output=True)
+        return zenity_result.returncode == 0
     except Exception as e:
-        logging.warning(f"Error showing zenity dialog: {e}")
+        logging.warning(f"Error showing dialog: {e}")
         return False
 
 def _restore_geometry(app_name: str, geometry: dict) -> None:
@@ -175,31 +189,52 @@ def main() -> None:
         _rename_state_file()
         sys.exit(0)
         
-    restored_count = 0
+    restored_apps = []
+    failed_apps = []
     unsaved_apps = []
     
     for window in windows:
+        exec_path = window.get("exec")
+        if exec_path:
+            app_name = os.path.basename(exec_path).capitalize()
+        else:
+            app_name = window.get("app_name") or window.get("title") or "Unknown App"
+            
         try:
             success = _relaunch_app(window)
             if success:
-                restored_count += 1
+                restored_apps.append(app_name)
+            else:
+                failed_apps.append(app_name)
+                
             if window.get("has_unsaved"):
-                app_name = window.get("app_name") or window.get("exec", "Unknown")
                 unsaved_apps.append(app_name)
         except Exception as e:
             logging.error(f"Critical per-app error: {e}")
+            failed_apps.append(app_name)
             
-    _write_restored_count(restored_count)
+    _write_restored_count(len(restored_apps))
     _rename_state_file()
-    logging.info(f"Restore complete: {restored_count} of {len(windows)} apps relaunched")
+    logging.info(f"Restore complete: {len(restored_apps)} of {len(windows)} apps relaunched")
     
-    if unsaved_apps:
-        try:
-            apps_str = ", ".join(unsaved_apps)
-            cmd = ["notify-send", "JioPC Restore", f"Note: some apps had unsaved work: {apps_str}"]
+    try:
+        report_lines = []
+        if restored_apps:
+            unique_restored = sorted(list(set(restored_apps)))
+            report_lines.append(f"Restored: {', '.join(unique_restored)}")
+        if failed_apps:
+            unique_failed = sorted(list(set(failed_apps)))
+            report_lines.append(f"Failed: {', '.join(unique_failed)}")
+        if unsaved_apps:
+            unique_unsaved = sorted(list(set(unsaved_apps)))
+            report_lines.append(f"Unsaved work: {', '.join(unique_unsaved)}")
+            
+        if report_lines:
+            report_body = "\n".join(report_lines)
+            cmd = ["notify-send", "--urgency=normal", "Restore Summary", report_body]
             subprocess.run(cmd, capture_output=True)
-        except Exception as e:
-            logging.error(f"Failed to send unsaved apps notification: {e}")
+    except Exception as e:
+        logging.error(f"Failed to send restore summary notification: {e}")
 
 if __name__ == "__main__":
     main()
