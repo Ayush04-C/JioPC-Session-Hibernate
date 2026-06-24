@@ -52,6 +52,7 @@ def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
         # The Problem Statement explicitly recommends using notify-send for this prompt
         cmd = [
             "notify-send",
+            "-a", "JioPC Restore",
             "--urgency=critical",
             "-t", "0",
             "-w",
@@ -221,7 +222,7 @@ def main() -> None:
             
         if report_lines:
             report_body = "\n".join(report_lines)
-            cmd = ["notify-send", "-t", "5000", "--urgency=normal", "Restore Summary", report_body]
+            cmd = ["notify-send", "-a", "JioPC Restore", "-t", "5000", "--urgency=normal", "Restore Summary", report_body]
             subprocess.run(cmd, capture_output=True)
     except Exception as e:
         logging.error(f"Failed to send restore summary notification: {e}")
