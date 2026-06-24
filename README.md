@@ -71,9 +71,9 @@ A strict requirement of this hackathon is that **Restore must work on a differen
 
 | Test Scenario | Save Time | Restore Time | Apps Restored | Success Rate |
 |------|-----------|--------------|---------------|--------------|
-| **Light Load** (File Manager + Terminal) | ~85ms | ~1.2s | 2/2 | 100% |
-| **Heavy Load** (Chrome + LibreOffice + Folders) | ~150ms | ~2.8s | 4/4 | 100% |
-| **Edge Case** (10+ Background Terminals) | ~300ms | ~4.5s | 10/10 | 100% |
+| **Light Load** (GINOME characters + Terminal) | ~29ms | ~11.7s | 2/2 | 100% |
+| **Heavy Load** (Chrome + LibreOffice + Folders) | ~38ms | ~47s | 4/4 | 100% |
+| **Edge Case** (10+ Background Terminals) | ~67ms | ~43s | 10/10 | 100% |
 
 
 ## Known Limitations
