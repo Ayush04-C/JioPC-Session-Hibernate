@@ -18,7 +18,7 @@ from pathlib import Path
 # CONFIG
 # ==========================================
 HANDLERS_CONFIG_PATH = "/usr/lib/jiopc-hibernate/handlers/handlers.yaml"
-DEV_HANDLERS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "handlers", "handlers.yaml")
+DEV_HANDLERS_PATH = os.path.join(os.path.dirname(__file__), "..", "handlers", "handlers.yaml")
 LOG_PATH = os.path.expanduser("~/.local/share/jiopc/hibernate/apply_handlers.log")
 
 # ==========================================
