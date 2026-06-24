@@ -47,7 +47,7 @@ def _is_stale(saved_at_str: str) -> bool:
         logging.warning(f"Failed to parse saved_at '{saved_at_str}': {e}")
         return False
 
-def _get_available_sessions() -> list[tuple[Path, dict]]:
+def _get_available_sessions():
     sessions = []
     paths = [
         SESSION_STATE_PATH,
@@ -65,7 +65,7 @@ def _get_available_sessions() -> list[tuple[Path, dict]]:
                 logging.warning(f"Failed to load session file {p}: {e}")
     return sessions
 
-def _show_restore_dialog(sessions: list[tuple[Path, dict]]) -> Path | None:
+def _show_restore_dialog(sessions):
     try:
         if not sessions:
             return None
@@ -169,7 +169,7 @@ def _relaunch_app(window: dict) -> bool:
         logging.error(f"Failed to relaunch app {window.get('exec')}: {e}")
         return False
 
-def _write_restored_count(chosen_path: Path, count: int) -> None:
+def _write_restored_count(chosen_path, count):
     try:
         if not chosen_path.exists():
             return
