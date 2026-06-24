@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Component E: Restore Flow on Login
-Owner: Ayush
+d
 """
 
 import os
@@ -169,26 +169,19 @@ def _relaunch_app(window: dict) -> bool:
         logging.error(f"Failed to relaunch app {window.get('exec')}: {e}")
         return False
 
-def _rename_state_file() -> None:
+def _write_restored_count(chosen_path: Path, count: int) -> None:
     try:
-        if SESSION_STATE_PATH.exists():
-            SESSION_STATE_PATH.rename(SESSION_STATE_LAST_PATH)
-    except Exception as e:
-        logging.error(f"Failed to rename state file: {e}")
-
-def _write_restored_count(count: int) -> None:
-    try:
-        if not SESSION_STATE_PATH.exists():
+        if not chosen_path.exists():
             return
             
-        with open(SESSION_STATE_PATH, 'r') as f:
+        with open(chosen_path, 'r') as f:
             data = json.load(f)
             
         if "meta" not in data:
             data["meta"] = {}
         data["meta"]["restored_count"] = count
         
-        with open(SESSION_STATE_PATH, 'w') as f:
+        with open(chosen_path, 'w') as f:
             json.dump(data, f, indent=2)
     except Exception as e:
         logging.error(f"Failed to update restored_count: {e}")
@@ -204,7 +197,6 @@ def main() -> None:
         
     chosen_path = _show_restore_dialog(sessions)
     if not chosen_path:
-        _rename_state_file()
         sys.exit(0)
         
     try:
@@ -244,8 +236,7 @@ def main() -> None:
             logging.error(f"Critical per-app error: {e}")
             failed_apps.append(app_name)
             
-    _write_restored_count(len(restored_apps))
-    _rename_state_file()
+    _write_restored_count(chosen_path, len(restored_apps))
     logging.info(f"Restore complete: {len(restored_apps)} of {len(windows)} apps relaunched")
     
     try:

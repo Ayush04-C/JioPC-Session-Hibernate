@@ -172,8 +172,6 @@ def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -
             
         def _rotate_history(base_path: str) -> None:
             try:
-                if not os.path.exists(base_path):
-                    return
                 dir_name = os.path.dirname(base_path)
                 base_name = os.path.basename(base_path)
                 name, ext = os.path.splitext(base_name)
@@ -182,7 +180,8 @@ def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -
                 
                 if os.path.exists(path_1):
                     os.replace(path_1, path_2)
-                os.replace(base_path, path_1)
+                if os.path.exists(base_path):
+                    os.replace(base_path, path_1)
             except Exception as e:
                 logger.warning(f"Failed to rotate session history: {e}")
                 
