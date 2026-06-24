@@ -57,13 +57,19 @@ def _gracefully_close_chrome(session) -> None:
     This prevents the 'Chrome didn't shut down correctly' crash bubble.
     """
     import subprocess
+    chrome_found = False
     for entry in session.entries:
         if entry.process and entry.process.executable and "chrome" in entry.process.executable.lower():
             try:
                 subprocess.run(["wmctrl", "-i", "-c", entry.window.window_id], timeout=2)
                 logger.info(f"Sent clean close signal to Chrome window {entry.window.window_id}")
+                chrome_found = True
             except Exception as e:
                 logger.warning(f"Failed to cleanly close Chrome: {e}")
+                
+    if chrome_found:
+        logger.info("Waiting 1.5s for Chrome to flush its session state to disk...")
+        time.sleep(1.5)
 
 def timeout_handler(signum, frame):
     """Fired if the execution exceeds the strict time budget."""

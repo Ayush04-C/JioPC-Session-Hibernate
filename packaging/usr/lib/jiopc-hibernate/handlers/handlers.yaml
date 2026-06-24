@@ -22,25 +22,39 @@
 
 handlers:
   - name: chrome
-    match_pattern: "google-chrome|chromium"
+    match_pattern: "chrome|chromium"
     restore_strategy: flag
     restore_flag: "--no-sandbox --disable-gpu --restore-last-session"
     restore_supported: true
-    description: "Restores Chrome or Chromium using its native --restore-last-session flag"
+    description: "Restores Chrome. Note: Tabs require user 'Continue where I left off' setting to be enabled in Chrome."
 
   - name: lxterminal
     match_pattern: "lxterminal"
     restore_strategy: shell_cwd
-    restore_flag: ""
+    restore_flag: "--working-directory={shell_cwd}"
     restore_supported: true
     description: "Restores LXTerminal to its previous working directory using the shell_cwd strategy"
 
-  - name: pcmanfm-qt
-    match_pattern: "pcmanfm-qt|pcmanfm"
-    restore_strategy: cwd_arg
+  - name: qterminal
+    match_pattern: "qterminal"
+    restore_strategy: shell_cwd
+    restore_flag: "-w {shell_cwd}"
+    restore_supported: true
+    description: "Restores QTerminal (default LXQt terminal) to its previous working directory"
+
+  - name: gnome-characters
+    match_pattern: "gnome-characters|characters"
+    restore_strategy: flag
     restore_flag: ""
     restore_supported: true
-    description: "Restores PCManFM-Qt to the previously open folder using cmdline argument or cwd"
+    description: "Restores GNOME Characters"
+
+  - name: pcmanfm-qt
+    match_pattern: "pcmanfm-qt|pcmanfm"
+    restore_strategy: pcmanfm_title_search
+    restore_flag: ""
+    restore_supported: true
+    description: "Restores PCManFM-Qt to the previously open folder by parsing the window title"
 
   - name: libreoffice
     match_pattern: "libreoffice|soffice"
@@ -48,4 +62,11 @@ handlers:
     restore_flag: ""
     restore_supported: true
     description: "Restores LibreOffice with the previously open document using window_title_search"
+
+  - name: gnome-disks
+    match_pattern: "gnome-disks|disks"
+    restore_strategy: flag
+    restore_flag: ""
+    restore_supported: true
+    description: "Restores the GNOME Disks utility"
 
