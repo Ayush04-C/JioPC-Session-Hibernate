@@ -22,7 +22,7 @@
 
 handlers:
   - name: chrome
-    match_pattern: "google-chrome|chromium"
+    match_pattern: "chrome|chromium"
     restore_strategy: flag
     restore_flag: "--no-sandbox --disable-gpu --restore-last-session"
     restore_supported: true
