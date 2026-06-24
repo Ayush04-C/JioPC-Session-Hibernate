@@ -92,7 +92,19 @@ def _show_restore_dialog(sessions):
             body_lines = ["Multiple saved sessions found. Which one would you like to restore?\n"]
             for i, (path, state) in enumerate(sessions):
                 saved_at = state.get("saved_at", "Unknown")
-                apps = len(state.get("windows", []))
+                windows = state.get("windows", [])
+                apps = len(windows)
+                
+                # Extract unique app names for the description
+                app_names = []
+                for w in windows:
+                    name = w.get("app_name") or w.get("title") or "Unknown"
+                    if name not in app_names:
+                        app_names.append(name)
+                        
+                app_list = ", ".join(app_names)
+                if len(app_list) > 40:
+                    app_list = app_list[:37] + "..."
                 
                 try:
                     dt = datetime.fromisoformat(saved_at.replace("Z", "+00:00"))
@@ -100,9 +112,9 @@ def _show_restore_dialog(sessions):
                 except:
                     formatted = saved_at
                     
-                label = f"Option {i+1} ({apps} apps)"
+                label = f"Restore {i+1}"
                 cmd.append(f"--action={i}={label}")
-                body_lines.append(f"Option {i+1}: Saved {formatted}, {apps} apps")
+                body_lines.append(f"• Option {i+1} [{formatted}]: {apps} apps ({app_list})")
                 
             cmd.append("--action=dismiss=Dismiss")
             cmd.append("JioPC Session Restore")
