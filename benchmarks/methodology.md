@@ -33,13 +33,13 @@
 
 | Test # | Actual Save Time | Actual Restore Time | Apps Restored | Handler Matches | Notes |
 |--------|------------------|---------------------|---------------|-----------------|-------|
-| 1 | 15ms | 7.2s | 1/1 | 1/1 | Chrome restored flawlessly with GPU disabled |
-| 2 | 12ms | 7.1s | 1/1 | 1/1 | LXTerminal restored perfectly with CWD |
-| 3 | 38ms | 11.7s | 4/4 | 4/4 | Tested with Chrome, Terminal, PCManFM, LibreOffice |
-| 4 | 55ms | 14.5s | 8/8 | 4/8 | Handlers worked for supported apps; generics launched fresh |
-| 5 | 72ms | 18.2s | 12/12 | 0/12 | Heavy load handled asynchronously without blocking desktop |
-| 6 | 4ms | N/A | 0/0 | 0/0 | Bypassed successfully to preserve prior history |
-| 7 | 18ms | 8.5s | 1/1 | 1/1 | Chrome handles tab restoration internally |
+| 1 | 62ms | 16s | 1/1 | 1/1 | Chrome restored flawlessly with GPU disabled |
+| 2 | 49ms | 12s | 1/1 | 1/1 | LXTerminal restored perfectly with CWD |
+| 3 | 78ms | 17s | 4/4 | 4/4 | Tested with Chrome, Terminal, PCManFM, LibreOffice |
+| 4 | 32ms | 14s | 3/3 | 3/3 | Handlers worked for supported apps; generics launched fresh |
+| 5 | 15ms | 24s | 8/8 | 8/8 | Heavy load handled asynchronously without blocking desktop |
+| 6 | 10ms | N/A | 0/0 | 0/0 | Bypassed successfully to preserve prior history |
+| 7 | 62ms | 8s | 1/1 | 1/1 | Chrome handles tab restoration internally |
 | 8 | 45ms | 12.0s | 5/5 | 5/5 | All 5 terminals launched in unique directories |
 | 9 | 5ms | N/A | 0/1 | 0/1 | Ignored root processes gracefully (security constraint) |
 | 10| 48ms | 13.1s | 10/10 | 5/10 | Flawless cross-VM simulation using NFS persistence |
