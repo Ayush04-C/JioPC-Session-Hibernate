@@ -31,9 +31,23 @@ handlers:
   - name: lxterminal
     match_pattern: "lxterminal"
     restore_strategy: shell_cwd
-    restore_flag: ""
+    restore_flag: "--working-directory={shell_cwd}"
     restore_supported: true
     description: "Restores LXTerminal to its previous working directory using the shell_cwd strategy"
+
+  - name: qterminal
+    match_pattern: "qterminal"
+    restore_strategy: shell_cwd
+    restore_flag: "-w {shell_cwd}"
+    restore_supported: true
+    description: "Restores QTerminal (default LXQt terminal) to its previous working directory"
+
+  - name: gnome-characters
+    match_pattern: "gnome-characters|characters"
+    restore_strategy: flag
+    restore_flag: ""
+    restore_supported: true
+    description: "Restores GNOME Characters"
 
   - name: pcmanfm-qt
     match_pattern: "pcmanfm-qt|pcmanfm"

@@ -129,38 +129,6 @@ def _get_libreoffice_doc_path(window_title: str) -> str | None:
         
     return None
 
-def _get_pcmanfm_dir(window_title: str) -> str | None:
-    """
-    Extract the directory path from a PCManFM window title.
-    Usually it's 'FolderName - PCManFM-Qt' or similar.
-    """
-    if not window_title:
-        return None
-        
-    try:
-        name = window_title.split(" - ")[0].strip()
-        if not name:
-            return None
-            
-        home = "/home/user"
-        common_dirs = ["Documents", "Downloads", "Pictures", "Music", "Videos", "Desktop", "Public", "Templates"]
-        if name in common_dirs:
-            return os.path.join(home, name)
-            
-        import subprocess
-        result = subprocess.run(
-            ["find", home, "-type", "d", "-name", name, "-maxdepth", "4"],
-            capture_output=True, text=True
-        )
-        if result.returncode == 0 and result.stdout:
-            lines = result.stdout.strip().split('\n')
-            if lines and lines[0]:
-                return lines[0]
-    except Exception as e:
-        logging.warning(f"Error finding PCManFM directory for title '{window_title}': {e}")
-        
-    return "/home/user"  # Fallback to home directory
-
 def _build_restore_args(handler: dict, window: dict) -> list[str]:
     """
     Implements the logic to extract restore arguments based on restore_strategy.
@@ -185,7 +153,11 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             if cwd is None:
                 cwd = window.get('cwd')
             if cwd is not None:
-                return [f"--working-directory={cwd}"]
+                flag = handler.get('restore_flag', '')
+                if '{shell_cwd}' in flag:
+                    return [flag.replace('{shell_cwd}', cwd)]
+                else:
+                    return [f"--working-directory={cwd}"]
             logging.warning(f"Both shell cwd and fallback cwd were None for handler '{handler.get('name')}'.")
             return []
             
@@ -209,13 +181,6 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             logging.warning(f"LibreOffice document path could not be determined for '{app_name}'.")
             window['restore_supported'] = False
             return []
-            
-        elif strategy == 'pcmanfm_title_search':
-            app_name = window.get('app_name', '')
-            dir_path = _get_pcmanfm_dir(app_name)
-            if dir_path:
-                return [dir_path]
-            return ["/home/user"]
             
         else:
             logging.warning(f"Unknown restore_strategy '{strategy}' for handler '{handler.get('name')}'.")
