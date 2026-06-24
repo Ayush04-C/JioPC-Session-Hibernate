@@ -162,7 +162,7 @@ def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -
         raise JsonWriterError(f"Failed to serialize session state: {e}") from e
 
     logger.debug(f"Starting atomic write to {path}.")
-    temp_path = f"{path}.tmp"
+    temp_path = f"{path}.{os.getpid()}.tmp"
     
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
