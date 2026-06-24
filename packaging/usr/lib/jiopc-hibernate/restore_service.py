@@ -47,29 +47,81 @@ def _is_stale(saved_at_str: str) -> bool:
         logging.warning(f"Failed to parse saved_at '{saved_at_str}': {e}")
         return False
 
-def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
+def _get_available_sessions() -> list[tuple[Path, dict]]:
+    sessions = []
+    paths = [
+        SESSION_STATE_PATH,
+        SESSION_STATE_PATH.with_name(SESSION_STATE_PATH.stem + "-1.json"),
+        SESSION_STATE_PATH.with_name(SESSION_STATE_PATH.stem + "-2.json")
+    ]
+    for p in paths:
+        if p.exists():
+            try:
+                with open(p, 'r') as f:
+                    state = json.load(f)
+                    if not _is_stale(state.get("saved_at", "")):
+                        sessions.append((p, state))
+            except Exception as e:
+                logging.warning(f"Failed to load session file {p}: {e}")
+    return sessions
+
+def _show_restore_dialog(sessions: list[tuple[Path, dict]]) -> Path | None:
     try:
-        # The Problem Statement explicitly recommends using notify-send for this prompt
+        if not sessions:
+            return None
+            
         cmd = [
             "notify-send",
             "-a", "JioPC Restore",
             "--urgency=critical",
             "-t", "0",
-            "-w",
-            "--action=yes=Restore",
-            "--action=no=Dismiss",
-            "JioPC Session Restore",
-            f"Restore your previous session?\nSaved: {saved_at_str}\nApps: {window_count}"
+            "-w"
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        # notify-send outputs the chosen action key (e.g. "yes")
-        if result.stdout.strip() == "yes":
-            return True
+        
+        if len(sessions) == 1:
+            state = sessions[0][1]
+            apps = len(state.get("windows", []))
+            saved_at = state.get("saved_at", "Unknown")
+            body_text = f"Restore your previous session?\nSaved: {saved_at}\nApps: {apps}"
+            cmd.extend([
+                "--action=0=Restore", 
+                "--action=dismiss=Dismiss",
+                "JioPC Session Restore", body_text
+            ])
+        else:
+            body_lines = ["Multiple saved sessions found. Which one would you like to restore?\n"]
+            for i, (path, state) in enumerate(sessions):
+                saved_at = state.get("saved_at", "Unknown")
+                apps = len(state.get("windows", []))
+                
+                try:
+                    dt = datetime.fromisoformat(saved_at.replace("Z", "+00:00"))
+                    formatted = dt.astimezone().strftime("%m-%d %H:%M")
+                except:
+                    formatted = saved_at
+                    
+                label = f"Option {i+1} ({apps} apps)"
+                cmd.append(f"--action={i}={label}")
+                body_lines.append(f"Option {i+1}: Saved {formatted}, {apps} apps")
+                
+            cmd.append("--action=dismiss=Dismiss")
+            cmd.append("JioPC Session Restore")
+            cmd.append("\n".join(body_lines))
             
-        return False
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        out = result.stdout.strip()
+        
+        if out == "dismiss" or not out:
+            return None
+            
+        try:
+            idx = int(out)
+            return sessions[idx][0]
+        except ValueError:
+            return None
     except Exception as e:
         logging.warning(f"Error showing dialog: {e}")
-        return False
+        return None
 
 def _restore_geometry(app_name: str, geometry: dict) -> None:
     if not geometry or not app_name:
@@ -145,40 +197,28 @@ def main() -> None:
     logging.info("Step 1: Waiting for desktop to load...")
     time.sleep(DESKTOP_WAIT_SECONDS)
     
-    if not SESSION_STATE_PATH.exists():
-        logging.info("No session state found, nothing to restore")
+    sessions = _get_available_sessions()
+    if not sessions:
+        logging.info("No valid session states found, nothing to restore")
+        sys.exit(0)
+        
+    chosen_path = _show_restore_dialog(sessions)
+    if not chosen_path:
+        _rename_state_file()
         sys.exit(0)
         
     try:
-        with open(SESSION_STATE_PATH, 'r') as f:
+        with open(chosen_path, 'r') as f:
             state = json.load(f)
     except Exception as e:
-        logging.error(f"Failed to read session state JSON: {e}")
+        logging.error(f"Failed to read chosen session state JSON: {e}")
         sys.exit(1)
         
     schema_version = state.get("schema_version")
     if schema_version != "1.0":
         logging.warning(f"Unsupported schema_version: {schema_version}, continuing anyway.")
         
-    saved_at = state.get("saved_at")
-    if not saved_at:
-        logging.error("Missing saved_at field in session state, cannot proceed safely.")
-        sys.exit(1)
-        
     windows = state.get("windows", [])
-    
-    if _is_stale(saved_at):
-        logging.info("Session state is stale, discarding silently")
-        try:
-            SESSION_STATE_PATH.unlink()
-        except Exception as e:
-            logging.error(f"Failed to delete stale state file: {e}")
-        sys.exit(0)
-        
-    confirmed = _show_restore_dialog(saved_at, len(windows))
-    if not confirmed:
-        _rename_state_file()
-        sys.exit(0)
         
     restored_apps = []
     failed_apps = []
