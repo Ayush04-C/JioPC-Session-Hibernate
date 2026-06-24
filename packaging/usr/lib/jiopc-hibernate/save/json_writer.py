@@ -12,7 +12,9 @@ from datetime import datetime, timezone
 
 from . import SessionState, SessionEntry, WindowInfo, ProcessInfo
 from .constants import SCHEMA_VERSION, DEFAULT_TRIGGER
-from ..restore import apply_handlers
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import apply_handlers
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +164,7 @@ def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -
         raise JsonWriterError(f"Failed to serialize session state: {e}") from e
 
     logger.debug(f"Starting atomic write to {path}.")
-    temp_path = f"{path}.{os.getpid()}.tmp"
+    temp_path = f"{path}.tmp"
     
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
