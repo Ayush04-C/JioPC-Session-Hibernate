@@ -53,6 +53,8 @@ def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
         cmd = [
             "notify-send",
             "--urgency=critical",
+            "-t", "0",
+            "-w",
             "--action=yes=Restore",
             "--action=no=Dismiss",
             "JioPC Session Restore",
@@ -62,20 +64,8 @@ def _show_restore_dialog(saved_at_str: str, window_count: int) -> bool:
         # notify-send outputs the chosen action key (e.g. "yes")
         if result.stdout.strip() == "yes":
             return True
-        elif result.stdout.strip() == "no":
-            return False
             
-        # If notify-send didn't block or return an action, fallback to zenity
-        zenity_cmd = [
-            "zenity", "--question",
-            "--title=JioPC Session Restore",
-            f"--text=Restore your previous session?\n\nSaved: {saved_at_str}\nApps: {window_count}",
-            "--ok-label=Restore",
-            "--cancel-label=Dismiss",
-            "--width=400"
-        ]
-        zenity_result = subprocess.run(zenity_cmd, capture_output=True)
-        return zenity_result.returncode == 0
+        return False
     except Exception as e:
         logging.warning(f"Error showing dialog: {e}")
         return False
@@ -231,7 +221,7 @@ def main() -> None:
             
         if report_lines:
             report_body = "\n".join(report_lines)
-            cmd = ["notify-send", "--urgency=normal", "Restore Summary", report_body]
+            cmd = ["notify-send", "-t", "5000", "--urgency=normal", "Restore Summary", report_body]
             subprocess.run(cmd, capture_output=True)
     except Exception as e:
         logging.error(f"Failed to send restore summary notification: {e}")
