@@ -153,7 +153,11 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             if cwd is None:
                 cwd = window.get('cwd')
             if cwd is not None:
-                return [f"--working-directory={cwd}"]
+                flag = handler.get('restore_flag', '')
+                if '{shell_cwd}' in flag:
+                    return [flag.replace('{shell_cwd}', cwd)]
+                else:
+                    return [f"--working-directory={cwd}"]
             logging.warning(f"Both shell cwd and fallback cwd were None for handler '{handler.get('name')}'.")
             return []
             
