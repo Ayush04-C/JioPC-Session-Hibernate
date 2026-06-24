@@ -52,14 +52,7 @@
 4. Manually trigger the capture hook.
 5. Extract the save time directly from `cat ~/.local/share/jiopc/hibernate/session-state.json | grep save_duration_ms`
 6. Log out of the LXQt session and log back in.
-7. Click "Restore" on the Zenity prompt.
+7. Click "Restore" on the notify prompt.
 8. Read the execution latency from `cat ~/.local/share/jiopc/hibernate/restore.log`.
 9. Read the success rate from `cat ~/.local/share/jiopc/hibernate/session-state-last.json`.
 
-## 6. Success Metrics
-
-Our solution must fulfill the core problem statement constraints to pass evaluation:
-- **State Save Time < 10 seconds**: Required
-- **Apps Relaunched > 80%**: Required
-- **Chrome Tabs Restored 100%**: Required
-- **Window Positions Within 50px**: > 80% (Best-effort based on resolution sync)
