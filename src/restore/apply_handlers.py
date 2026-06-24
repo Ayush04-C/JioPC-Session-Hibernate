@@ -186,6 +186,18 @@ def _build_restore_args(handler: dict, window: dict) -> list[str]:
             window['restore_supported'] = False
             return []
             
+        elif strategy == 'pcmanfm_title_search':
+            app_name = window.get('app_name', '')
+            if app_name == 'user' or app_name == os.environ.get('USER'):
+                return [os.path.expanduser('~')]
+            else:
+                # Try to find a directory in home matching the title
+                home = os.path.expanduser('~')
+                target = os.path.join(home, app_name)
+                if os.path.isdir(target):
+                    return [target]
+            return []
+            
         else:
             logging.warning(f"Unknown restore_strategy '{strategy}' for handler '{handler.get('name')}'.")
             return []
