@@ -5,6 +5,7 @@ capture pipeline. It handles environment setup, timing, and coordinates
 the building and writing of the session state.
 """
 
+import argparse
 import logging
 import sys
 import time
@@ -91,6 +92,11 @@ def main() -> None:
     
     logger.info("Starting session capture.")
     
+    parser = argparse.ArgumentParser(description="JioPC Session Capture Service")
+    parser.add_argument("--trigger", type=str, default="user_disconnect", 
+                        help="The event that triggered the capture (e.g. user_disconnect, inactivity_timeout)")
+    args = parser.parse_args()
+    
     try:
         logger.info("Building session state.")
         start_time = time.perf_counter()
@@ -100,8 +106,8 @@ def main() -> None:
         end_time = time.perf_counter()
         save_duration_ms = int((end_time - start_time) * 1000)
         
-        logger.info("Writing session state.")
-        write_session(session, DEFAULT_SESSION_PATH, save_duration_ms)
+        logger.info(f"Writing session state (trigger: {args.trigger}).")
+        write_session(session, DEFAULT_SESSION_PATH, save_duration_ms, trigger=args.trigger)
         
         # Give Chrome a chance to write its session to disk
         _gracefully_close_chrome(session)
