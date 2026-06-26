@@ -74,7 +74,7 @@ def _show_restore_dialog(sessions):
             "notify-send",
             "-a", "JioPC Restore",
             "--urgency=critical",
-            "-t", "5000",
+            "-t", "0",
             "-w"
         ]
         
