@@ -82,4 +82,24 @@ A strict requirement of this hackathon is that **Restore must work on a differen
 2. **Generic Applications**: Applications without an explicitly defined handler in `handlers.yaml` are relaunched from a fresh state using their base executable; internal states (like unsaved text in Mousepad) cannot be restored.
 3. **Staleness Window**: Sessions older than 24 hours are automatically discarded silently to prevent launching deeply outdated environments.
 
+## 4.2 Acceptance Checklist (EVALUATE)
+
+| Check | Pass? |
+|-------|-------|
+| State saved on inactivity timeout (session-state.json written before the session ends) | ✅ Yes |
+| State saved on user-initiated disconnect / logout (existing behaviour still works) | ✅ Yes |
+| All running GUI apps captured in session-state.json | ✅ Yes |
+| State save completes within the time budget (does not block session end) | ✅ Yes |
+| Restore notification appears on next login before any apps are relaunched | ✅ Yes |
+| User can dismiss restore — no apps relaunched if dismissed | ✅ Yes |
+| Apps relaunch on confirm | ✅ Yes |
+| Chrome reopens with the tabs that were open before disconnect | ✅ Yes |
+| In-app state restored where a handler exists (e.g. terminal working directory) | ✅ Yes |
+| Apps without a handler relaunch fresh (no crash, no error) | ✅ Yes |
+| Relaunched apps are near their saved positions where resolution allows (best-effort) | ✅ Yes |
+| Works on a fresh VM (cross-VM test) with the same NFS home | ✅ Yes |
+| Failed relaunch does not crash the desktop session | ✅ Yes |
+| Stale state (> 24 hours) discarded without triggering a restore prompt | ✅ Yes |
+| .deb installs cleanly on fresh Ubuntu 24.04 VM | ✅ Yes |
+
 [GitHub Repository: Ayush04-C/jiopc-session-hibernate](https://github.com/Ayush04-C/jiopc-session-hibernate)
