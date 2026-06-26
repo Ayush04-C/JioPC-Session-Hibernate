@@ -23,6 +23,8 @@ chmod 644 /usr/share/autostart/jiopc-restore.desktop 2>/dev/null || true
 rm -f /usr/local/bin/lxqt-leave || true
 rm -f /home/user/Desktop/Smart-Logout.desktop || true
 rm -f /usr/share/applications/jiopc-smart-logout.desktop || true
+rm -f /etc/xdg/autostart/test-notify.desktop || true
+rm -f /home/user/.config/autostart/test-notify.desktop || true
 
 # Step 5: Print to stdout
 echo "jiopc-session-hibernate installed successfully." || true
