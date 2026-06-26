@@ -85,7 +85,7 @@ def _show_restore_dialog(sessions):
             body_text = f"Restore your previous session?\nSaved: {saved_at}\nApps: {apps}"
             cmd.extend([
                 "--action=0=Restore", 
-                "--action=dismiss=Dismiss",
+                "--action=dismiss=Skip",
                 "JioPC Session Restore", body_text
             ])
         else:
@@ -112,11 +112,11 @@ def _show_restore_dialog(sessions):
                 except:
                     formatted = saved_at
                     
-                label = f"Restore {i+1}"
+                label = f"#{i+1}"
                 cmd.append(f"--action={i}={label}")
                 body_lines.append(f"• Option {i+1} [{formatted}]: {apps} apps ({app_list})")
                 
-            cmd.append("--action=dismiss=Dismiss")
+            cmd.append("--action=dismiss=Skip")
             cmd.append("JioPC Session Restore")
             cmd.append("\n".join(body_lines))
             
