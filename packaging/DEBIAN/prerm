@@ -8,6 +8,9 @@ systemctl --global disable jiopc-save-on-logout.service 2>/dev/null || true
 rm -f /etc/xdg/autostart/jiopc-restore.desktop || true
 # Clean up fallback path as well
 rm -f /usr/share/autostart/jiopc-restore.desktop || true
+# Clean up test notifications
+rm -f /etc/xdg/autostart/test-notify.desktop || true
+rm -f /home/user/.config/autostart/test-notify.desktop || true
 
 # Step 3: Print to stdout
 echo "jiopc-session-hibernate will be removed." || true
