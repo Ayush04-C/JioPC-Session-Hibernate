@@ -93,7 +93,7 @@ def _entry_to_dict(entry: SessionEntry) -> dict:
     }
 
 
-def _session_to_dict(session: SessionState) -> dict:
+def _session_to_dict(session: SessionState, trigger: str = DEFAULT_TRIGGER) -> dict:
     """Serializes a SessionState object to a dictionary and enriches it.
 
     Args:
@@ -121,7 +121,7 @@ def _session_to_dict(session: SessionState) -> dict:
     return {
         "schema_version": SCHEMA_VERSION,
         "saved_at": saved_at,
-        "trigger": DEFAULT_TRIGGER,
+        "trigger": trigger,
         "windows": enriched_windows,
         "meta": {
             "total_windows": len(enriched_windows),
@@ -132,12 +132,14 @@ def _session_to_dict(session: SessionState) -> dict:
     }
 
 
-def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -> None:
+def write_session(session: SessionState, path: str, save_duration_ms: int = 0, trigger: str = DEFAULT_TRIGGER) -> None:
     """Serializes and writes a SessionState object to a JSON file atomically.
 
     Args:
         session: The SessionState object to serialize.
         path: The file path where the JSON data will be written.
+        save_duration_ms: Time taken to build the state in milliseconds.
+        trigger: The event that triggered the save.
         save_duration_ms: The duration taken to capture the session state.
 
     Raises:
@@ -146,7 +148,7 @@ def write_session(session: SessionState, path: str, save_duration_ms: int = 0) -
     logger.debug(f"Starting serialization for SessionState with {len(session.entries)} entries.")
     
     try:
-        data = _session_to_dict(session)
+        data = _session_to_dict(session, trigger)
         final_data = {
             "schema_version": data["schema_version"],
             "saved_at": data["saved_at"],
